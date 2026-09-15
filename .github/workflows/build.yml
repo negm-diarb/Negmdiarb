@@ -20,13 +20,14 @@ jobs:
           cp -r project/* .
           cp -r project/.[!.]* . 2>/dev/null || true
 
-      - name:        Fix ML Kit OCR and FileProvider
-  
+      - name: Fix ML Kit OCR and FileProvider
+        run: |
           sed -i "s#com.google.mlkit:text-recognition-arabic:16.0.0#com.google.mlkit:text-recognition:16.0.1#g" app/build.gradle
           sed -i "s#import com.google.mlkit.vision.text.arabic.ArabicTextRecognizerOptions;#import com.google.mlkit.vision.text.latin.TextRecognizerOptions;#g" app/src/main/java/com/negmdiarb/app/MainActivity.java
           sed -i "s#TextRecognition.getClient(new ArabicTextRecognizerOptions.Builder().build())#TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)#g" app/src/main/java/com/negmdiarb/app/MainActivity.java
-          sed -i '/^import /i import androidx.core.content.FileProvider;' app/src/main/java/com/negmdiarb/app/MainActivity.java
-        
+          sed -i '/import android.content.FileProvider;/d' app/src/main/java/com/negmdiarb/app/MainActivity.java
+          sed -i '/package com.negmdiarb.app;/a import androidx.core.content.FileProvider;' app/src/main/java/com/negmdiarb/app/MainActivity.java
+
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
