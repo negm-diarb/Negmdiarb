@@ -1,0 +1,39 @@
+name: Build Negm Diarb V4
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download repository
+        uses: actions/checkout@v4
+
+      - name: Extract V4 project
+        run: |
+          unzip -o NegmDiarb_GitHub_Build_v4.zip -d project
+          cp -r project/* .
+          cp -r project/.[!.]* . 2>/dev/null || true
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Create Gradle wrapper
+        run: gradle wrapper --gradle-version 8.7
+
+      - name: Build APK
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: NegmDiarb-V4-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
