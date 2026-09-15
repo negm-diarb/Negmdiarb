@@ -16,7 +16,7 @@ jobs:
 
       - name: Extract project
         run: |
-          unzip -o NegmDiarb_GitHub_Build.zip -d project
+          unzip -o NegmDiarb_GitHub_Build_v3.zip -d project
           cp -r project/* .
           cp -r project/.[!.]* . 2>/dev/null || true
 
