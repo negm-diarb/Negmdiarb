@@ -1,0 +1,51 @@
+name: Build Negm Diarb V8 Cloud Complete
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Prepare V8 project
+        shell: bash
+        run: |
+          set -e
+          ZIP_FILE="NegmDiarb_V8_Cloud_Complete.zip"
+          test -f "$ZIP_FILE"
+          rm -rf /tmp/negm_v8
+          mkdir -p /tmp/negm_v8
+          unzip -q "$ZIP_FILE" -d /tmp/negm_v8
+          PROJECT_DIR=$(find /tmp/negm_v8 -name settings.gradle -type f -print -quit | xargs dirname)
+          test -n "$PROJECT_DIR"
+          cp -R "$PROJECT_DIR"/. .
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Create wrapper
+        run: gradle wrapper --gradle-version 8.7
+
+      - name: Build V8 APK
+        run: |
+          chmod +x ./gradlew
+          ./gradlew clean assembleDebug --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: NegmDiarb-V8-Cloud-Complete-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
