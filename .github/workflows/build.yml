@@ -1,4 +1,4 @@
-name: Build Negm Diarb APK
+name: Build Negm Diarb V7 Cloud APK
 
 on:
   workflow_dispatch:
@@ -14,19 +14,10 @@ jobs:
       - name: Download repository
         uses: actions/checkout@v4
 
-      - name: Extract project
+      - name: Extract V7 Cloud project
         run: |
-          unzip -o NegmDiarb_GitHub_Build_v3.zip -d project
-          cp -r project/* .
-          cp -r project/.[!.]* . 2>/dev/null || true
-
-      - name: Fix ML Kit OCR and FileProvider
-        run: |
-          sed -i "s#com.google.mlkit:text-recognition-arabic:16.0.0#com.google.mlkit:text-recognition:16.0.1#g" app/build.gradle
-          sed -i "s#import com.google.mlkit.vision.text.arabic.ArabicTextRecognizerOptions;#import com.google.mlkit.vision.text.latin.TextRecognizerOptions;#g" app/src/main/java/com/negmdiarb/app/MainActivity.java
-          sed -i "s#TextRecognition.getClient(new ArabicTextRecognizerOptions.Builder().build())#TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)#g" app/src/main/java/com/negmdiarb/app/MainActivity.java
-          sed -i '/import android.content.FileProvider;/d' app/src/main/java/com/negmdiarb/app/MainActivity.java
-          sed -i '/package com.negmdiarb.app;/a import androidx.core.content.FileProvider;' app/src/main/java/com/negmdiarb/app/MainActivity.java
+          unzip -o NegmDiarb_V7_Cloud_Firebase.zip -d project
+          rsync -a project/NegmDiarb_v6/ ./ --exclude='.github'
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -40,11 +31,8 @@ jobs:
       - name: Create Gradle wrapper
         run: gradle wrapper --gradle-version 8.7
 
-      - name: Build APK
+      - name: Build V7 Cloud APK
         run: ./gradlew assembleDebug --no-daemon
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: NegmDiarb-APK
-          path: app/build/outputs/apk/debug/app-debug.apk
+      - name: Upload V7 Cloud APK
+        uses: actions/upload-artifact@v
