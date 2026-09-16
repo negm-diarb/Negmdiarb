@@ -14,10 +14,24 @@ jobs:
       - name: Download repository
         uses: actions/checkout@v4
 
-      - name: Extract V7 Cloud project
+      - name: Prepare clean V7 project
         run: |
+          rm -rf app
+          rm -rf .gradle
+          rm -f build.gradle
+          rm -f settings.gradle
+          rm -f gradle.properties
+          rm -rf gradle
+
+          mkdir -p project
           unzip -o NegmDiarb_V7_Cloud_Firebase.zip -d project
-          rsync -a project/NegmDiarb_v6/ ./ --exclude='.github'
+
+          cp -r project/NegmDiarb_v6/. .
+
+          echo "V7 project copied successfully"
+          ls -la
+          echo "Checking MainActivity:"
+          wc -l app/src/main/java/com/negmdiarb/app/MainActivity.java
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -36,3 +50,6 @@ jobs:
 
       - name: Upload V7 Cloud APK
         uses: actions/upload-artifact@v4
+        with:
+          name: NegmDiarb-V7-Cloud-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
