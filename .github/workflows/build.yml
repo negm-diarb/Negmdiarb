@@ -11,9 +11,22 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-
       - name: Download repository
         uses: actions/checkout@v4
+
+      - name: Prepare V7 project
+        run: |
+          rm -rf app
+          rm -rf project
+          mkdir -p project
+
+          unzip -o NegmDiarb_V7_Cloud_Firebase_FIXED.zip -d project
+
+          cp -r project/NegmDiarb_v6/. .
+
+          echo "V7 project prepared successfully"
+          echo "Checking MainActivity:"
+          wc -l app/src/main/java/com/negmdiarb/app/MainActivity.java
 
       - name: Setup Java
         uses: actions/setup-java@v4
