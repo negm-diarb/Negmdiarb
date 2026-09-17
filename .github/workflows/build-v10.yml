@@ -34,7 +34,6 @@ jobs:
 
           if [ ! -f "$ZIP_FILE" ]; then
             echo "ERROR: V10 ZIP file was not found!"
-            echo "Files in repository:"
             ls -la
             exit 1
           fi
@@ -47,23 +46,24 @@ jobs:
 
           echo "Searching for Android project..."
 
-          PROJECT_DIR=$(find /tmp/negm_v10 \
+          SETTINGS_FILE=$(find /tmp/negm_v10 \
             -name settings.gradle \
             -type f \
-            -print -quit | xargs dirname)
+            -print -quit)
 
-          if [ -z "$PROJECT_DIR" ]; then
+          if [ -z "$SETTINGS_FILE" ]; then
             echo "ERROR: settings.gradle was not found!"
-            find /tmp/negm_v10 -maxdepth 4 -type f | head -100
+            find /tmp/negm_v10 -maxdepth 5 -type f | head -100
             exit 1
           fi
 
-          PROJECT_DIR=$(dirname "$PROJECT_DIR")
+          PROJECT_DIR=$(dirname "$SETTINGS_FILE")
 
           echo "Android project found at:"
           echo "$PROJECT_DIR"
 
-          echo "Copying project files..."
+          echo "Copying project..."
+
           cp -R "$PROJECT_DIR"/. .
 
           echo "Project files:"
