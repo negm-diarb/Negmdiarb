@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -24,10 +25,19 @@ jobs:
         run: |
           set -e
 
-          ZIP_FILE="NegmDiarb_V10_UI_FIXED.zip"
+          ZIP_FILE="NegmDiarb_V10_UI_FIXED_FINAL.zip"
 
-          echo "Checking V10 ZIP..."
-          test -f "$ZIP_FILE"
+          echo "===================================="
+          echo "Checking V10 project ZIP..."
+          echo "File: $ZIP_FILE"
+          echo "===================================="
+
+          if [ ! -f "$ZIP_FILE" ]; then
+            echo "ERROR: V10 ZIP file was not found!"
+            echo "Files in repository:"
+            ls -la
+            exit 1
+          fi
 
           rm -rf /tmp/negm_v10
           mkdir -p /tmp/negm_v10
@@ -35,28 +45,71 @@ jobs:
           echo "Extracting V10 project..."
           unzip -q "$ZIP_FILE" -d /tmp/negm_v10
 
-          echo "Finding Android project..."
-          PROJECT_DIR=$(find /tmp/negm_v10 -name settings.gradle -type f -print -quit | xargs dirname)
+          echo "Searching for Android project..."
 
-          test -n "$PROJECT_DIR"
+          PROJECT_DIR=$(find /tmp/negm_v10 \
+            -name settings.gradle \
+            -type f \
+            -print -quit)
 
-          echo "Project directory: $PROJECT_DIR"
+          if [ -z "$PROJECT_DIR" ]; then
+            echo "ERROR: settings.gradle was not found!"
+            find /tmp/negm_v10 -maxdepth 4 -type f | head -100
+            exit 1
+          fi
 
+          PROJECT_DIR=$(dirname "$PROJECT_DIR")
+
+          echo "Android project found at:"
+          echo "$PROJECT_DIR"
+
+          echo "Copying project..."
           cp -R "$PROJECT_DIR"/. .
+
+          echo "Project files:"
+          ls -la
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
       - name: Create Gradle wrapper
-        run: gradle wrapper --gradle-version 8.7
+        run: |
+          gradle wrapper --gradle-version 8.7
 
       - name: Build V10 APK
+        shell: bash
         run: |
+          set -e
+
+          echo "===================================="
+          echo "Building Negm Diarb V10 APK"
+          echo "===================================="
+
           chmod +x ./gradlew
-          ./gradlew clean assembleDebug --no-daemon
+
+          ./gradlew clean assembleDebug --no-daemon --stacktrace
+
+      - name: Check APK
+        shell: bash
+        run: |
+          set -e
+
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+
+          if [ ! -f "$APK" ]; then
+            echo "ERROR: APK was not created!"
+            exit 1
+          fi
+
+          echo "===================================="
+          echo "APK CREATED SUCCESSFULLY"
+          echo "===================================="
+
+          ls -lh "$APK"
 
       - name: Upload V10 APK
         uses: actions/upload-artifact@v4
         with:
           name: NegmDiarb-V10-UI-APK
           path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
