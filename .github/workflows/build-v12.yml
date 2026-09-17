@@ -1,0 +1,66 @@
+name: Build Negm Diarb V12 MapPicker
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Prepare V12 project
+        shell: bash
+        run: |
+          set -e
+
+          ZIP_FILE="NegmDiarb_V12_MapPicker_FIXED.zip"
+
+          echo "Checking V12 ZIP..."
+          test -f "$ZIP_FILE"
+
+          rm -rf /tmp/negm_v12
+          mkdir -p /tmp/negm_v12
+
+          echo "Extracting V12..."
+          unzip -q "$ZIP_FILE" -d /tmp/negm_v12
+
+          echo "Finding Android project..."
+          PROJECT_DIR=$(find /tmp/negm_v12 -type f -name settings.gradle -print -quit | xargs -r dirname)
+
+          if [ -z "$PROJECT_DIR" ]; then
+            PROJECT_DIR=$(find /tmp/negm_v12 -type f -name settings.gradle.kts -print -quit | xargs -r dirname)
+          fi
+
+          test -n "$PROJECT_DIR"
+
+          echo "Project found at:"
+          echo "$PROJECT_DIR"
+
+          cp -R "$PROJECT_DIR"/. "$GITHUB_WORKSPACE"/
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Create Gradle wrapper
+        run: |
+          gradle wrapper --gradle-version 8.7
+
+      - name: Build V12 APK
+        run: |
+          chmod +x ./gradlew
+          ./gradlew clean assembleDebug --no-daemon
+
+      - name: Upload V12 APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: NegmDiarb-V12-MapPicker-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
