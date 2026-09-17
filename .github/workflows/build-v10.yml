@@ -23,16 +23,24 @@ jobs:
         shell: bash
         run: |
           set -e
-          ZIP_FILE="NegmDiarb_V10_UI_Complete.zip"
+
+          ZIP_FILE="NegmDiarb_V10_UI_FIXED.zip"
+
+          echo "Checking V10 ZIP..."
           test -f "$ZIP_FILE"
 
           rm -rf /tmp/negm_v10
           mkdir -p /tmp/negm_v10
 
+          echo "Extracting V10 project..."
           unzip -q "$ZIP_FILE" -d /tmp/negm_v10
 
+          echo "Finding Android project..."
           PROJECT_DIR=$(find /tmp/negm_v10 -name settings.gradle -type f -print -quit | xargs dirname)
+
           test -n "$PROJECT_DIR"
+
+          echo "Project directory: $PROJECT_DIR"
 
           cp -R "$PROJECT_DIR"/. .
 
