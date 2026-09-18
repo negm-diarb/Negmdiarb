@@ -1,0 +1,99 @@
+name: Build Negm Diarb V13 Final UI
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    env:
+      NEGMDIARB_KEYSTORE_PASSWORD: ${{ secrets.NEGMDIARB_KEYSTORE_PASSWORD }}
+      NEGMDIARB_KEY_ALIAS: ${{ secrets.NEGMDIARB_KEY_ALIAS }}
+      NEGMDIARB_KEY_PASSWORD: ${{ secrets.NEGMDIARB_KEY_PASSWORD }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Prepare V13 project
+        shell: bash
+        run: |
+          set -e
+
+          ZIP_FILE="NegmDiarb_V13_Final_UI.zip"
+
+          test -f "$ZIP_FILE"
+
+          rm -rf /tmp/negm_v13
+          mkdir -p /tmp/negm_v13
+
+          unzip -q "$ZIP_FILE" -d /tmp/negm_v13
+
+          PROJECT_DIR=$(find /tmp/negm_v13 -type f -name settings.gradle -print -quit | xargs -r dirname)
+
+          if [ -z "$PROJECT_DIR" ]; then
+            PROJECT_DIR=$(find /tmp/negm_v13 -type f -name settings.gradle.kts -print -quit | xargs -r dirname)
+          fi
+
+          test -n "$PROJECT_DIR"
+
+          cp -R "$PROJECT_DIR"/. "$GITHUB_WORKSPACE"/
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Create Gradle wrapper
+        run: gradle wrapper --gradle-version 8.7
+
+      - name: Prepare stable signing key
+        id: signing
+        shell: bash
+        env:
+          KEYSTORE_B64: ${{ secrets.NEGMDIARB_KEYSTORE_B64 }}
+        run: |
+          set -e
+
+          if [ -n "$KEYSTORE_B64" ] && \
+             [ -n "$NEGMDIARB_KEYSTORE_PASSWORD" ] && \
+             [ -n "$NEGMDIARB_KEY_ALIAS" ] && \
+             [ -n "$NEGMDIARB_KEY_PASSWORD" ]; then
+
+            echo "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/negm-release.keystore"
+
+            test -s "$RUNNER_TEMP/negm-release.keystore"
+
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "Signing secrets are not configured."
+          fi
+
+      - name: Build signed release APK
+        if: steps.signing.outputs.enabled == 'true'
+        env:
+          NEGMDIARB_KEYSTORE_FILE: ${{ runner.temp }}/negm-release.keystore
+        run: |
+          chmod +x ./gradlew
+          ./gradlew clean assembleRelease --no-daemon
+
+      - name: Build debug APK if signing unavailable
+        if: steps.signing.outputs.enabled != 'true'
+        run: |
+          chmod +x ./gradlew
+          ./gradlew clean assembleDebug --no-daemon
+
+      - name: Upload V13 APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: NegmDiarb-V13-Final-APK
+          path: |
+            app/build/outputs/apk/release/app-release.apk
+            app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
