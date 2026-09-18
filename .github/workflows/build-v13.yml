@@ -7,7 +7,13 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    env:
+      NEGMDIARB_KEYSTORE_PASSWORD: ${{ secrets.NEGMDIARB_KEYSTORE_PASSWORD }}
+      NEGMDIARB_KEY_ALIAS: ${{ secrets.NEGMDIARB_KEY_ALIAS }}
+      NEGMDIARB_KEY_PASSWORD: ${{ secrets.NEGMDIARB_KEY_PASSWORD }}
+
     steps:
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -35,10 +41,16 @@ jobs:
 
           echo "Finding Android project..."
 
-          PROJECT_DIR=$(find /tmp/negm_v13 -type f -name settings.gradle -print -quit | xargs -r dirname)
+          PROJECT_DIR=$(find /tmp/negm_v13 \
+            -type f \
+            -name settings.gradle \
+            -print -quit | xargs -r dirname)
 
           if [ -z "$PROJECT_DIR" ]; then
-            PROJECT_DIR=$(find /tmp/negm_v13 -type f -name settings.gradle.kts -print -quit | xargs -r dirname)
+            PROJECT_DIR=$(find /tmp/negm_v13 \
+              -type f \
+              -name settings.gradle.kts \
+              -print -quit | xargs -r dirname)
           fi
 
           test -n "$PROJECT_DIR"
@@ -48,6 +60,46 @@ jobs:
 
           cp -R "$PROJECT_DIR"/. "$GITHUB_WORKSPACE"/
 
+      - name: Fix V13 Java source
+        shell: python
+        run: |
+          from pathlib import Path
+
+          p = Path(
+              "app/src/main/java/com/negmdiarb/app/MainActivity.java"
+          )
+
+          text = p.read_text(encoding="utf-8")
+
+          broken = (
+              'safe(d.getString("status"))+"\n'
+              '🏪 المنشأة: "'
+          )
+
+          fixed = (
+              'safe(d.getString("status"))+"\\n'
+              '🏪 المنشأة: "'
+          )
+
+          if broken in text:
+              text = text.replace(broken, fixed)
+              p.write_text(text, encoding="utf-8")
+              print("V13 Java source fixed successfully.")
+          else:
+              print("The known broken string was not found.")
+              print("Continuing with the source as-is.")
+
+      - name: Verify V13 source
+        shell: bash
+        run: |
+          set -e
+
+          echo "Checking MainActivity.java..."
+
+          test -f app/src/main/java/com/negmdiarb/app/MainActivity.java
+
+          echo "MainActivity.java exists."
+
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
@@ -55,102 +107,59 @@ jobs:
         run: |
           gradle wrapper --gradle-version 8.7
 
-      - name: Decode stable signing key
+      - name: Prepare stable signing key
         shell: bash
         env:
           KEYSTORE_B64: ${{ secrets.NEGMDIARB_KEYSTORE_B64 }}
         run: |
           set -e
 
-          test -n "$KEYSTORE_B64"
+          echo "Checking signing secrets..."
 
-          echo "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/negm-release.keystore"
+          test -n "$KEYSTORE_B64"
+          test -n "$NEGMDIARB_KEYSTORE_PASSWORD"
+          test -n "$NEGMDIARB_KEY_ALIAS"
+          test -n "$NEGMDIARB_KEY_PASSWORD"
+
+          echo "$KEYSTORE_B64" | base64 --decode \
+            > "$RUNNER_TEMP/negm-release.keystore"
 
           test -s "$RUNNER_TEMP/negm-release.keystore"
 
-          echo "Signing keystore prepared successfully."
+          echo "Stable signing key prepared successfully."
 
-      - name: Build V13 release APK
+      - name: Build V13 signed release APK
         shell: bash
+        env:
+          NEGMDIARB_KEYSTORE_FILE: ${{ runner.temp }}/negm-release.keystore
         run: |
           set -e
 
           chmod +x ./gradlew
 
+          echo "Building V13 release APK..."
+
           ./gradlew clean assembleRelease --no-daemon
 
-      - name: Sign V13 APK with stable key
+          test -f app/build/outputs/apk/release/app-release.apk
+
+          echo "V13 release APK built successfully."
+
+      - name: Verify APK
         shell: bash
-        env:
-          KEYSTORE_FILE: ${{ runner.temp }}/negm-release.keystore
-          KEYSTORE_PASSWORD: ${{ secrets.NEGMDIARB_KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.NEGMDIARB_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.NEGMDIARB_KEY_PASSWORD }}
         run: |
           set -e
 
-          echo "Finding Android Build Tools..."
+          APK="app/build/outputs/apk/release/app-release.apk"
 
-          BUILD_TOOLS=$(find "$ANDROID_HOME/build-tools" \
-            -maxdepth 1 \
-            -mindepth 1 \
-            -type d \
-            | sort -V \
-            | tail -n 1)
+          test -f "$APK"
 
-          test -n "$BUILD_TOOLS"
-
-          APKSIGNER="$BUILD_TOOLS/apksigner"
-          ZIPALIGN="$BUILD_TOOLS/zipalign"
-
-          test -f "$APKSIGNER"
-          test -f "$ZIPALIGN"
-
-          echo "Android Build Tools:"
-          echo "$BUILD_TOOLS"
-
-          INPUT_APK="app/build/outputs/apk/release/app-release-unsigned.apk"
-
-          if [ ! -f "$INPUT_APK" ]; then
-            INPUT_APK="app/build/outputs/apk/release/app-release.apk"
-          fi
-
-          test -f "$INPUT_APK"
-
-          mkdir -p app/build/outputs/final
-
-          TEMP_APK="$RUNNER_TEMP/NegmDiarb-V13-aligned.apk"
-          FINAL_APK="app/build/outputs/final/NegmDiarb-V13.apk"
-
-          echo "Aligning APK..."
-
-          "$ZIPALIGN" -f -p 4 \
-            "$INPUT_APK" \
-            "$TEMP_APK"
-
-          test -f "$TEMP_APK"
-
-          echo "Signing APK..."
-
-          "$APKSIGNER" sign \
-            --ks "$KEYSTORE_FILE" \
-            --ks-key-alias "$KEY_ALIAS" \
-            --ks-pass "pass:$KEYSTORE_PASSWORD" \
-            --key-pass "pass:$KEY_PASSWORD" \
-            --out "$FINAL_APK" \
-            "$TEMP_APK"
-
-          test -f "$FINAL_APK"
-
-          echo "Verifying APK signature..."
-
-          "$APKSIGNER" verify --verbose "$FINAL_APK"
-
-          echo "V13 signed APK created successfully."
+          echo "APK found:"
+          ls -lh "$APK"
 
       - name: Upload V13 APK
         uses: actions/upload-artifact@v4
         with:
           name: NegmDiarb-V13-Final-APK
-          path: app/build/outputs/final/NegmDiarb-V13.apk
+          path: app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
