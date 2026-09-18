@@ -1,0 +1,165 @@
+name: Build Negm Diarb V14 Final
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    env:
+      NEGMDIARB_KEYSTORE_PASSWORD: ${{ secrets.NEGMDIARB_KEYSTORE_PASSWORD }}
+      NEGMDIARB_KEY_ALIAS: ${{ secrets.NEGMDIARB_KEY_ALIAS }}
+      NEGMDIARB_KEY_PASSWORD: ${{ secrets.NEGMDIARB_KEY_PASSWORD }}
+
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Prepare V14 project
+        shell: bash
+        run: |
+          set -e
+
+          ZIP_FILE="NegmDiarb_V14_Final.zip"
+
+          echo "Checking V14 ZIP..."
+          test -f "$ZIP_FILE"
+
+          rm -rf "$RUNNER_TEMP/negm_v14"
+          mkdir -p "$RUNNER_TEMP/negm_v14"
+
+          echo "Extracting V14 project..."
+          unzip -q "$ZIP_FILE" -d "$RUNNER_TEMP/negm_v14"
+
+          echo "Finding Android project..."
+
+          PROJECT_DIR=$(find "$RUNNER_TEMP/negm_v14" \
+            -type f \
+            -name settings.gradle \
+            -print -quit | xargs -r dirname)
+
+          if [ -z "$PROJECT_DIR" ]; then
+            PROJECT_DIR=$(find "$RUNNER_TEMP/negm_v14" \
+              -type f \
+              -name settings.gradle.kts \
+              -print -quit | xargs -r dirname)
+          fi
+
+          test -n "$PROJECT_DIR"
+
+          echo "V14 project found at:"
+          echo "$PROJECT_DIR"
+
+          rm -rf "$GITHUB_WORKSPACE/app"
+          rm -f "$GITHUB_WORKSPACE/settings.gradle"
+          rm -f "$GITHUB_WORKSPACE/settings.gradle.kts"
+          rm -f "$GITHUB_WORKSPACE/build.gradle"
+          rm -f "$GITHUB_WORKSPACE/build.gradle.kts"
+          rm -f "$GITHUB_WORKSPACE/gradle.properties"
+
+          cp -R "$PROJECT_DIR"/. "$GITHUB_WORKSPACE"/
+
+          echo "V14 project prepared successfully."
+
+      - name: Check Android project
+        shell: bash
+        run: |
+          set -e
+
+          echo "Checking applicationId..."
+          grep -R "applicationId" app/build.gradle
+
+          echo "Checking versionCode..."
+          grep -R "versionCode" app/build.gradle
+
+          echo "Checking V14 project files..."
+          test -f app/build.gradle
+          test -f app/src/main/AndroidManifest.xml
+
+      - name: Prepare stable signing key
+        shell: bash
+        env:
+          KEYSTORE_B64: ${{ secrets.NEGMDIARB_KEYSTORE_B64 }}
+        run: |
+          set -e
+
+          test -n "$KEYSTORE_B64"
+          test -n "$NEGMDIARB_KEYSTORE_PASSWORD"
+          test -n "$NEGMDIARB_KEY_ALIAS"
+          test -n "$NEGMDIARB_KEY_PASSWORD"
+
+          echo "$KEYSTORE_B64" | base64 --decode \
+            > "$RUNNER_TEMP/negm-release.keystore"
+
+          test -s "$RUNNER_TEMP/negm-release.keystore"
+
+          echo "Signing keystore prepared."
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Create Gradle wrapper
+        shell: bash
+        run: |
+          set -e
+
+          gradle wrapper --gradle-version 8.7
+
+          chmod +x ./gradlew
+
+      - name: Build signed V14 release
+        shell: bash
+        env:
+          NEGMDIARB_KEYSTORE_FILE: ${{ runner.temp }}/negm-release.keystore
+        run: |
+          set -e
+
+          ./gradlew clean assembleRelease --no-daemon
+
+          test -f app/build/outputs/apk/release/app-release.apk
+
+          echo "V14 APK built successfully."
+
+      - name: Verify APK signature
+        shell: bash
+        run: |
+          set -e
+
+          APK="app/build/outputs/apk/release/app-release.apk"
+
+          echo "Verifying APK..."
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$APK"
+
+          echo ""
+          echo "APK certificate:"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$APK"
+
+      - name: Check APK information
+        shell: bash
+        run: |
+          set -e
+
+          APK="app/build/outputs/apk/release/app-release.apk"
+
+          echo "APK file:"
+          ls -lh "$APK"
+
+          echo ""
+          echo "Package information:"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" \
+            | grep -E "package: name=|versionCode=|versionName="
+
+      - name: Upload V14 APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: NegmDiarb-V14-Final-Signed-APK
+          path: app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
