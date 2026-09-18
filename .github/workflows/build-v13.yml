@@ -89,7 +89,14 @@ jobs:
         run: |
           set -e
 
-          BUILD_TOOLS=$(find "$ANDROID_HOME/build-tools" -maxdepth 1 -mindepth 1 -type d | sort -V | tail -n 1)
+          echo "Finding Android Build Tools..."
+
+          BUILD_TOOLS=$(find "$ANDROID_HOME/build-tools" \
+            -maxdepth 1 \
+            -mindepth 1 \
+            -type d \
+            | sort -V \
+            | tail -n 1)
 
           test -n "$BUILD_TOOLS"
 
@@ -98,6 +105,9 @@ jobs:
 
           test -f "$APKSIGNER"
           test -f "$ZIPALIGN"
+
+          echo "Android Build Tools:"
+          echo "$BUILD_TOOLS"
 
           INPUT_APK="app/build/outputs/apk/release/app-release-unsigned.apk"
 
@@ -109,14 +119,38 @@ jobs:
 
           mkdir -p app/build/outputs/final
 
+          TEMP_APK="$RUNNER_TEMP/NegmDiarb-V13-aligned.apk"
+          FINAL_APK="app/build/outputs/final/NegmDiarb-V13.apk"
+
+          echo "Aligning APK..."
+
           "$ZIPALIGN" -f -p 4 \
             "$INPUT_APK" \
-            app/build/outputs/final/NegmDiarb-V13.apk
+            "$TEMP_APK"
+
+          test -f "$TEMP_APK"
+
+          echo "Signing APK..."
 
           "$APKSIGNER" sign \
             --ks "$KEYSTORE_FILE" \
             --ks-key-alias "$KEY_ALIAS" \
             --ks-pass "pass:$KEYSTORE_PASSWORD" \
             --key-pass "pass:$KEY_PASSWORD" \
-            --out app/build/outputs/final/NegmDiarb-V13.apk \
-            app/build/outputs/final
+            --out "$FINAL_APK" \
+            "$TEMP_APK"
+
+          test -f "$FINAL_APK"
+
+          echo "Verifying APK signature..."
+
+          "$APKSIGNER" verify --verbose "$FINAL_APK"
+
+          echo "V13 signed APK created successfully."
+
+      - name: Upload V13 APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: NegmDiarb-V13-Final-APK
+          path: app/build/outputs/final/NegmDiarb-V13.apk
+          if-no-files-found: error
