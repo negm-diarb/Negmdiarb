@@ -1,0 +1,89 @@
+name: Build Negm Diarb V24 Final Permissions Security
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Prepare V24 project
+        run: |
+          unzip -q "NegmDiarb_V24_Final.zip" -d build_v24
+          cd build_v24
+          rm -rf .github
+
+      - name: Check V24 project
+        working-directory: build_v24
+        run: |
+          test -f settings.gradle || test -f settings.gradle.kts
+          test -f build.gradle || test -f build.gradle.kts
+          test -f app/build.gradle || test -f app/build.gradle.kts
+          echo "V24 project files OK"
+
+      - name: Prepare stable signing key
+        env:
+          NEGMDIARB_KEYSTORE_B64: ${{ secrets.NEGMDIARB_KEYSTORE_B64 }}
+        run: |
+          test -n "$NEGMDIARB_KEYSTORE_B64"
+          echo "$NEGMDIARB_KEYSTORE_B64" | base64 --decode > "$GITHUB_WORKSPACE/negmdiarb-release.jks"
+          test -s "$GITHUB_WORKSPACE/negmdiarb-release.jks"
+          echo "Stable signing key prepared"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Create Gradle wrapper
+        working-directory: build_v24
+        run: |
+          gradle wrapper --gradle-version 8.7
+          chmod +x gradlew
+
+      - name: Build signed V24 release
+        working-directory: build_v24
+        env:
+          NEGMDIARB_KEYSTORE_FILE: ${{ github.workspace }}/negmdiarb-release.jks
+          NEGMDIARB_KEYSTORE_PASSWORD: ${{ secrets.NEGMDIARB_KEYSTORE_PASSWORD }}
+          NEGMDIARB_KEY_ALIAS: ${{ secrets.NEGMDIARB_KEY_ALIAS }}
+          NEGMDIARB_KEY_PASSWORD: ${{ secrets.NEGMDIARB_KEY_PASSWORD }}
+        run: |
+          ./gradlew clean assembleRelease --no-daemon
+
+      - name: Verify APK exists
+        run: |
+          test -f build_v24/app/build/outputs/apk/release/app-release.apk
+          ls -lh build_v24/app/build/outputs/apk/release/app-release.apk
+
+      - name: Prepare APK
+        run: |
+          mkdir -p out
+          cp build_v24/app/build/outputs/apk/release/app-release.apk \
+             out/NegmDiarb-V24-Signed-APK.apk
+
+      - name: Verify APK signature
+        run: |
+          $ANDROID_HOME/build-tools/35.0.0/apksigner verify \
+            --verbose \
+            out/NegmDiarb-V24-Signed-APK.apk
+
+      - name: Show APK certificate
+        run: |
+          $ANDROID_HOME/build-tools/35.0.0/apksigner verify \
+            --print-certs \
+            out/NegmDiarb-V24-Signed-APK.apk
+
+      - name: Upload V24 APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: NegmDiarb-V24-Signed-APK
+          path: out/NegmDiarb-V24-Signed-APK.apk
