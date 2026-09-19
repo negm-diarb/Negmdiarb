@@ -1,7 +1,7 @@
 name: Build Negm Diarb V25 Final Permissions Fix
 
 on:
-  workflow_dispatch:
+  workflow_dispatch: {}
 
 jobs:
   build:
@@ -20,8 +20,7 @@ jobs:
       - name: Prepare V25 project
         run: |
           unzip -q "NegmDiarb_V25_Final.zip" -d build_v25
-          cd build_v25
-          rm -rf .github
+          rm -rf build_v25/.github
 
       - name: Check V25 project
         working-directory: build_v25
@@ -63,5 +62,10 @@ jobs:
         run: |
           test -f build_v25/app/build/outputs/apk/release/app-release.apk
           ls -lh build_v25/app/build/outputs/apk/release/app-release.apk
+
+      - name: Prepare APK
+        run: |
+          mkdir -p out
+          cp build_v25/app/build/outputs/apk/release/app-release.apk out/NegmDiarb-V25-Signed-APK.apk
 
       - name:
