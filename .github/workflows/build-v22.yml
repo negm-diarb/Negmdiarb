@@ -1,0 +1,66 @@
+name: Build Negm Diarb V22 Final
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Prepare V22 project
+        run: |
+          unzip -q "NegmDiarb_V22_Final.zip" -d build_v22
+          cd build_v22
+          rm -rf .github
+
+      - name: Prepare stable signing key
+        env:
+          NEGMDIARB_KEYSTORE_B64: ${{ secrets.NEGMDIARB_KEYSTORE_B64 }}
+        run: |
+          test -n "$NEGMDIARB_KEYSTORE_B64"
+          echo "$NEGMDIARB_KEYSTORE_B64" | base64 --decode > "$GITHUB_WORKSPACE/negmdiarb-release.jks"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Create Gradle wrapper
+        working-directory: build_v22
+        run: |
+          gradle wrapper --gradle-version 8.7
+
+      - name: Build signed V22 release
+        working-directory: build_v22
+        env:
+          NEGMDIARB_KEYSTORE_FILE: ${{ github.workspace }}/negmdiarb-release.jks
+          NEGMDIARB_KEYSTORE_PASSWORD: ${{ secrets.NEGMDIARB_KEYSTORE_PASSWORD }}
+          NEGMDIARB_KEY_ALIAS: ${{ secrets.NEGMDIARB_KEY_ALIAS }}
+          NEGMDIARB_KEY_PASSWORD: ${{ secrets.NEGMDIARB_KEY_PASSWORD }}
+        run: |
+          ./gradlew clean assembleRelease --no-daemon
+
+      - name: Prepare APK
+        run: |
+          mkdir -p out
+          cp build_v22/app/build/outputs/apk/release/app-release.apk \
+             out/NegmDiarb-V22-Signed-APK.apk
+
+      - name: Verify APK signature
+        run: |
+          $ANDROID_HOME/build-tools/35.0.0/apksigner verify \
+            --verbose out/NegmDiarb-V22-Signed-APK.apk
+
+      - name: Upload V22 APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: NegmDiarb-V22-Signed-APK
+          path: out/NegmDiarb-V22-Signed-APK.apk
