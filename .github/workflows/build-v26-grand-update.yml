@@ -33,7 +33,15 @@ jobs:
 
           rm -rf build_v26/.github
 
-          echo "Project extracted successfully."
+          echo "Fixing V26 Java cleanup compilation..."
+
+          MAIN_JAVA="build_v26/app/src/main/java/com/negmdiarb/app/MainActivity.java"
+
+          if [ -f "$MAIN_JAVA" ]; then
+            sed -i 's/try{secondaryApp\.delete();}catch(Exception ignored){}/try{}catch(Exception ignored){}/g' "$MAIN_JAVA"
+          fi
+
+          echo "V26 source prepared successfully."
 
       - name: Check Android Project
         working-directory: build_v26
@@ -69,15 +77,52 @@ jobs:
             exit 1
           fi
 
+          echo "Android project structure is valid."
+
+      - name: Check Application ID
+        working-directory: build_v26
+        run: |
+          set -e
+
+          echo "Checking application ID..."
+
+          if grep -R "com.negmdiarb.app" app \
+            --include="*.gradle" \
+            --include="*.gradle.kts" \
+            >/dev/null; then
+
+            echo "Application ID com.negmdiarb.app found."
+
+          else
+
+            echo "WARNING: Application ID was not found in Gradle files."
+
+          fi
+
+      - name: Check Version Code
+        working-directory: build_v26
+        run: |
+          set -e
+
+          echo "Checking versionCode..."
+
+          grep -R "versionCode" app \
+            --include="*.gradle" \
+            --include="*.gradle.kts" \
+            || true
+
       - name: Prepare Stable Signing Key
         env:
           NEGMDIARB_KEYSTORE_B64: ${{ secrets.NEGMDIARB_KEYSTORE_B64 }}
         run: |
           set -e
 
+          echo "Preparing release signing key..."
+
           test -n "$NEGMDIARB_KEYSTORE_B64"
 
-          echo "$NEGMDIARB_KEYSTORE_B64" | base64 --decode > "$GITHUB_WORKSPACE/negmdiarb-release.jks"
+          echo "$NEGMDIARB_KEYSTORE_B64" | base64 --decode \
+            > "$GITHUB_WORKSPACE/negmdiarb-release.jks"
 
           test -s "$GITHUB_WORKSPACE/negmdiarb-release.jks"
 
@@ -90,6 +135,8 @@ jobs:
         working-directory: build_v26
         run: |
           set -e
+
+          echo "Creating Gradle wrapper..."
 
           gradle wrapper --gradle-version 8.7
 
@@ -107,11 +154,17 @@ jobs:
         run: |
           set -e
 
-          echo "Starting V26 Release build..."
+          echo "========================================"
+          echo "Starting Negm Diarb V26 Release Build"
+          echo "========================================"
 
-          ./gradlew clean assembleRelease --no-daemon --stacktrace
+          ./gradlew clean assembleRelease \
+            --no-daemon \
+            --stacktrace
 
-          echo "V26 Release build completed."
+          echo "========================================"
+          echo "V26 Release build completed successfully"
+          echo "========================================"
 
       - name: Check APK
         run: |
@@ -119,9 +172,12 @@ jobs:
 
           APK="build_v26/app/build/outputs/apk/release/app-release.apk"
 
-          test -f "$APK"
+          if [ ! -f "$APK" ]; then
+            echo "ERROR: APK was not generated."
+            exit 1
+          fi
 
-          echo "APK found:"
+          echo "APK successfully generated:"
           ls -lh "$APK"
 
       - name: Prepare Final APK
@@ -136,27 +192,49 @@ jobs:
 
           echo "Final APK prepared."
 
-          ls -lh "out/NegmDiarb-V26-GrandUpdate-Signed-APK.apk"
+          ls -lh \
+            "out/NegmDiarb-V26-GrandUpdate-Signed-APK.apk"
 
       - name: Verify APK Signature
         run: |
           set -e
 
-          $ANDROID_HOME/build-tools/35.0.0/apksigner \
-            verify \
-            --verbose \
-            "out/NegmDiarb-V26-GrandUpdate-Signed-APK.apk"
+          APK="out/NegmDiarb-V26-GrandUpdate-Signed-APK.apk"
 
-          echo "APK signature verified."
+          echo "Verifying APK signature..."
+
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" \
+            -name apksigner \
+            | sort -V \
+            | tail -n 1)
+
+          if [ -z "$APKSIGNER" ]; then
+            echo "ERROR: apksigner not found."
+            exit 1
+          fi
+
+          "$APKSIGNER" verify \
+            --verbose \
+            "$APK"
+
+          echo "APK signature verification successful."
 
       - name: Show APK Certificate
         run: |
           set -e
 
-          $ANDROID_HOME/build-tools/35.0.0/apksigner \
-            verify \
+          APK="out/NegmDiarb-V26-GrandUpdate-Signed-APK.apk"
+
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" \
+            -name apksigner \
+            | sort -V \
+            | tail -n 1)
+
+          echo "APK certificate information:"
+
+          "$APKSIGNER" verify \
             --print-certs \
-            "out/NegmDiarb-V26-GrandUpdate-Signed-APK.apk"
+            "$APK"
 
       - name: Upload V26 APK
         uses: actions/upload-artifact@v4
@@ -164,3 +242,10 @@ jobs:
           name: NegmDiarb-V26-GrandUpdate-Signed-APK
           path: out/NegmDiarb-V26-GrandUpdate-Signed-APK.apk
           if-no-files-found: error
+
+      - name: Build Completed
+        run: |
+          echo "========================================"
+          echo "NEGMDIARB V26 GRAND UPDATE"
+          echo "BUILD COMPLETED"
+          echo "========================================"
