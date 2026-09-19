@@ -68,4 +68,16 @@ jobs:
           mkdir -p out
           cp build_v25/app/build/outputs/apk/release/app-release.apk out/NegmDiarb-V25-Signed-APK.apk
 
-      - name:
+      - name: Verify APK signature
+        run: |
+          $ANDROID_HOME/build-tools/35.0.0/apksigner verify --verbose out/NegmDiarb-V25-Signed-APK.apk
+
+      - name: Show APK certificate
+        run: |
+          $ANDROID_HOME/build-tools/35.0.0/apksigner verify --print-certs out/NegmDiarb-V25-Signed-APK.apk
+
+      - name: Upload V25 APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: NegmDiarb-V25-Signed-APK
+          path: out/NegmDiarb-V25-Signed-APK.apk
