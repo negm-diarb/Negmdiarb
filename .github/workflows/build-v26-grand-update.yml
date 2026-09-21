@@ -1,0 +1,204 @@
+name: Build Negm Diarb V26 Grand Update
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Prepare V26 Grand Update Project
+        run: |
+          set -e
+          echo "Preparing V26 Grand Update project..."
+          test -f "NegmDiarb_V26_GrandUpdate.zip"
+          rm -rf build_v26
+          mkdir -p build_v26
+          unzip -q "NegmDiarb_V26_GrandUpdate.zip" -d build_v26
+          rm -rf build_v26/.github
+
+          echo "Fixing V26 Java cleanup compilation..."
+
+          MAIN_JAVA="build_v26/app/src/main/java/com/negmdiarb/app/MainActivity.java"
+
+          if [ -f "$MAIN_JAVA" ]; then
+            sed -i 's/try{secondaryApp\.delete();}catch(Exception ignored){}/try{}catch(Exception ignored){}/g' "$MAIN_JAVA"
+          fi
+
+          echo "V26 source prepared successfully."
+
+      - name: Check Android Project
+        working-directory: build_v26
+        run: |
+          set -e
+
+          if [ -f settings.gradle ]; then
+            echo "settings.gradle found"
+          elif [ -f settings.gradle.kts ]; then
+            echo "settings.gradle.kts found"
+          else
+            echo "ERROR: settings.gradle not found"
+            exit 1
+          fi
+
+          if [ -f build.gradle ]; then
+            echo "build.gradle found"
+          elif [ -f build.gradle.kts ]; then
+            echo "build.gradle.kts found"
+          else
+            echo "ERROR: build.gradle not found"
+            exit 1
+          fi
+
+          if [ -f app/build.gradle ]; then
+            echo "app/build.gradle found"
+          elif [ -f app/build.gradle.kts ]; then
+            echo "app/build.gradle.kts found"
+          else
+            echo "ERROR: app/build.gradle not found"
+            exit 1
+          fi
+
+      - name: Check Application ID
+        working-directory: build_v26
+        run: |
+          set -e
+
+          if grep -R "com.negmdiarb.app" app \
+            --include="*.gradle" \
+            --include="*.gradle.kts" \
+            >/dev/null; then
+            echo "Application ID com.negmdiarb.app found."
+          else
+            echo "WARNING: Application ID was not found in Gradle files."
+          fi
+
+      - name: Check Version Code
+        working-directory: build_v26
+        run: |
+          set -e
+          grep -R "versionCode" app \
+            --include="*.gradle" \
+            --include="*.gradle.kts" \
+            || true
+
+      - name: Prepare Stable Signing Key
+        env:
+          NEGMDIARB_KEYSTORE_B64: ${{ secrets.NEGMDIARB_KEYSTORE_B64 }}
+        run: |
+          set -e
+
+          test -n "$NEGMDIARB_KEYSTORE_B64"
+
+          echo "$NEGMDIARB_KEYSTORE_B64" | base64 --decode \
+            > "$GITHUB_WORKSPACE/negmdiarb-release.jks"
+
+          test -s "$GITHUB_WORKSPACE/negmdiarb-release.jks"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Create Gradle Wrapper
+        working-directory: build_v26
+        run: |
+          set -e
+
+          gradle wrapper --gradle-version 8.7
+          chmod +x gradlew
+
+      - name: Build V26 Release APK
+        working-directory: build_v26
+        env:
+          NEGMDIARB_KEYSTORE_FILE: ${{ github.workspace }}/negmdiarb-release.jks
+          NEGMDIARB_KEYSTORE_PASSWORD: ${{ secrets.NEGMDIARB_KEYSTORE_PASSWORD }}
+          NEGMDIARB_KEY_ALIAS: ${{ secrets.NEGMDIARB_KEY_ALIAS }}
+          NEGMDIARB_KEY_PASSWORD: ${{ secrets.NEGMDIARB_KEY_PASSWORD }}
+        run: |
+          set -e
+
+          ./gradlew clean assembleRelease \
+            --no-daemon \
+            --stacktrace
+
+      - name: Check APK
+        run: |
+          set -e
+
+          APK="build_v26/app/build/outputs/apk/release/app-release.apk"
+
+          if [ ! -f "$APK" ]; then
+            echo "ERROR: APK was not generated."
+            exit 1
+          fi
+
+          ls -lh "$APK"
+
+      - name: Prepare Final APK
+        run: |
+          set -e
+
+          mkdir -p out
+
+          cp \
+            "build_v26/app/build/outputs/apk/release/app-release.apk" \
+            "out/NegmDiarb-V26-GrandUpdate-Signed-APK.apk"
+
+      - name: Verify APK Signature
+        run: |
+          set -e
+
+          APK="out/NegmDiarb-V26-GrandUpdate-Signed-APK.apk"
+
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" \
+            -name apksigner \
+            | sort -V \
+            | tail -n 1)
+
+          if [ -z "$APKSIGNER" ]; then
+            echo "ERROR: apksigner not found."
+            exit 1
+          fi
+
+          "$APKSIGNER" verify \
+            --verbose \
+            "$APK"
+
+      - name: Show APK Certificate
+        run: |
+          set -e
+
+          APK="out/NegmDiarb-V26-GrandUpdate-Signed-APK.apk"
+
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" \
+            -name apksigner \
+            | sort -V \
+            | tail -n 1)
+
+          "$APKSIGNER" verify \
+            --print-certs \
+            "$APK"
+
+      - name: Upload V26 APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: NegmDiarb-V26-GrandUpdate-Signed-APK
+          path: out/NegmDiarb-V26-GrandUpdate-Signed-APK.apk
+          if-no-files-found: error
+
+      - name: Build Completed
+        run: |
+          echo "========================================"
+          echo "NEGMDIARB V26 GRAND UPDATE"
+          echo "BUILD COMPLETED"
+          echo "========================================"
