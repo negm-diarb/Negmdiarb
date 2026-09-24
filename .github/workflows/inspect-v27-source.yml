@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Inspect exact methods
+      - name: Inspect key methods
         run: |
           set -e
           rm -rf inspect && mkdir inspect
@@ -21,29 +21,12 @@ jobs:
             cp -a "$ROOT"/. inspect/
           fi
           J=inspect/app/src/main/java/com/negmdiarb/app/MainActivity.java
-          M=inspect/app/src/main/AndroidManifest.xml
-          python3 - "$J" <<'PY'
-          import re,sys
-          lines=open(sys.argv[1],encoding='utf-8').read().splitlines()
-          sig=re.compile(r'^\\s+(?:public |private |protected )?(?:static )?(?:final )?[\\w<>?, .\\[\]]+\\s+(\\w+)\\s*\\([^;]*\\)\\s*\\{')
-          methods=[]
-          for i,line in enumerate(lines):
-              m=sig.match(line)
-              if m: methods.append((i+1,m.group(1),line.strip()))
-          print("=== ALL METHOD SIGNATURES ===")
-          for x in methods: print(f"{x[0]}: {x[2]}")
-          targets={'showAdmin','addBusiness','saveBusiness','addOffer','createOwnerAccount','createAuthUser','loadRatings','loadOffers','loadRequests','loadComplaints','showRatingDialog','installBackHandler','renderThumbs','uploadImages','uploadImage','showHome','showAdd','showOffers','showBusinessDetails','approveRating','approveOffer','approveBusiness','sendComplaint'}
-          print("=== TARGET METHOD BODIES ===")
-          for start,name,line in methods:
-              if name not in targets: continue
-              depth=0; started=False; end=start
-              for j in range(start-1,len(lines)):
-                  depth += lines[j].count('{')-lines[j].count('}')
-                  if '{' in lines[j]: started=True
-                  if started and depth==0:
-                      end=j+1; break
-              print(f"--- {name} lines {start}-{end} ---")
-              for j in range(start-1,min(end,start+220)-1): print(f"{j+1}: {lines[j]}")
-          PY
-          echo "=== MANIFEST ==="
-          cat "$M"
+          echo "=== KEY METHOD SIGNATURES ==="
+          grep -nE '^[[:space:]]*(public |private |protected )?(static )?.*(void|boolean|String|LinearLayout|TextView|Button).* (addBusinessCard|showRatingDialog|createOwnerAccount|createAuthUser|installBackHandler|addOffer|approveRating|approveOffer|approveBusiness|sendComplaint|showHome|showBusinessDetails|saveBusiness|uploadImage|uploadImages)[[:space:]]*\\(' "$J" || true
+          for N in addBusinessCard showRatingDialog createOwnerAccount createAuthUser installBackHandler addOffer approveRating approveOffer approveBusiness sendComplaint showHome showBusinessDetails saveBusiness uploadImage uploadImages; do
+            LINE=$(grep -nE "^[[:space:]]*(public |private |protected )?(static )?.* (void|boolean|String|LinearLayout|TextView|Button).* $N[[:space:]]*\\(" "$J" | head -n 1 | cut -d: -f1 || true)
+            if [ -n "$LINE" ]; then
+              echo "=== $N line $LINE ==="
+              sed -n "$LINE,$((LINE+110))p" "$J"
+            fi
+          done
