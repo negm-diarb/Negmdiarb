@@ -32,12 +32,15 @@ jobs:
           python3 "$GITHUB_WORKSPACE/patch_v31_security.py"
           MAIN="$(find app/src/main/java -name MainActivity.java | head -n 1)"
           test -n "$MAIN"
-          grep -q 'returnToAdminAfterForm' "$MAIN"
-          grep -q 'createAdminNotification("rating"' "$MAIN"
-          grep -q 'businessRequests' "$MAIN"
-          grep -q 'installPublicContributionButtons' "$MAIN"
-          grep -q 'admin_device_id' "$MAIN"
-          grep -q 'currentAdminDeviceId' "$MAIN"
+          python3 - "$MAIN" <<'PY'
+          import sys
+          p=sys.argv[1]; s=open(p,encoding="utf-8").read()
+          required=["returnToAdminAfterForm","createAdminNotification(\"rating\"","businessRequests","installPublicContributionButtons","admin_device_id","currentAdminDeviceId"]
+          missing=[x for x in required if x not in s]
+          print("VERIFY SOURCE:",p)
+          print("MISSING:",missing)
+          assert not missing, missing
+          PY
       - name: Version
         working-directory: build_v31
         run: |
