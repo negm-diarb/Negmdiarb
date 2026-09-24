@@ -66,11 +66,7 @@ if "void installPublicContributionButtons()" not in s:
             h.setTextSize(18);h.setTypeface(null,android.graphics.Typeface.BOLD);requestList.addView(h);
             for(DocumentSnapshot d:ss){
                 LinearLayout c=box();
-                c.addView(tv("🏪 "+safe(d.getString("name"))+"
-التصنيف: "+safe(d.getString("category"))+"
-📍 "+safe(d.getString("address"))+"
-☎ "+safe(d.getString("phone"))+"
-"+safe(d.getString("description"))));
+                c.addView(tv("🏪 "+safe(d.getString("name"))+"\\nالتصنيف: "+safe(d.getString("category"))+"\\n📍 "+safe(d.getString("address"))+"\\n☎ "+safe(d.getString("phone"))+"\\n"+safe(d.getString("description"))));
                 LinearLayout actions=new LinearLayout(this);actions.setOrientation(LinearLayout.HORIZONTAL);
                 Button approve=btn("✅ اعتماد وإضافة"),reject=btn("❌ رفض");
                 styleAction(approve,actions);styleAction(reject,actions);c.addView(actions);
