@@ -14,13 +14,7 @@ def method_replace(src,name,repl):
             if depth==0: return src[:a]+repl+"\n"+src[i+1:]
     raise SystemExit("unbalanced "+name)
 
-# Navigation state: explicit source screen, never infer from adminMode.
-if "boolean returnToAdminAfterForm=false;" not in s:
-    import re
-    m=re.search(r'(?m)^\s*void\s+addBusinessCard\s*\(\s*DocumentSnapshot\s+d\s*\)\s*\{',s)
-    if not m:
-        raise SystemExit("addBusinessCard signature not found for navigation state injection")
-    s=s[:m.start()] + '    boolean returnToAdminAfterForm=false;\n\n' + s[m.start():]
+# Navigation state is injected after all method rewrites, immediately before setup().
 
 s=s.replace('findViewById(R.id.btnAdminAddBusiness).setOnClickListener(v->{if(isMainAdmin()){clearForm();show(addPanel);}', 'findViewById(R.id.btnAdminAddBusiness).setOnClickListener(v->{if(isMainAdmin()){returnToAdminAfterForm=true;clearForm();show(addPanel);}')
 s=s.replace('findViewById(R.id.btnAdminAddOffer).setOnClickListener(v->openAdminOfferForm());', 'findViewById(R.id.btnAdminAddOffer).setOnClickListener(v->{returnToAdminAfterForm=true;openAdminOfferForm();});')
@@ -168,5 +162,14 @@ s=s.replace('db.collection("offers").add(m).addOnSuccessListener(x->{offerStatus
 # Repair the owner change-request callback as one complete expression.\nbad='db.collection("changeRequests").add(req).addOnSuccessListener(x->{createAdminNotification("changeRequest",x.getId(),bid,"طلب تعديل منشأة","يوجد طلب تعديل يحتاج مراجعة.");addStatus.setText("✅ تم إرسال التعديل للإدارة. لن يظهر للعامة إلا بعد الموافقة.")).addOnFailureListener(e->addStatus.setText("❌ تعذر إرسال الطلب: "+safe(e.getMessage())));});'\ngood='db.collection("changeRequests").add(req).addOnSuccessListener(x->{createAdminNotification("changeRequest",x.getId(),bid,"طلب تعديل منشأة","يوجد طلب تعديل يحتاج مراجعة.");addStatus.setText("✅ تم إرسال التعديل للإدارة. لن يظهر للعامة إلا بعد الموافقة.");}).addOnFailureListener(e->addStatus.setText("❌ تعذر إرسال الطلب: "+safe(e.getMessage())));});'\ns=s.replace(bad,good)\n\n# Complaint notification hook deferred until the complaint method is replaced safely.\n# Start listener when admin session is established.
 s=s.replace('loadRoleData();', 'loadRoleData();if(isMainAdmin()){initAdminNotifications();startAdminNotificationListener();refreshAdminBadges();}', 2)
 
-# Final line-level repair: the owner change-request callback must close the lambda before addOnFailureListener.\nlines=[]\nfor line in s.splitlines():\n    if 'db.collection("changeRequests").add(req).addOnSuccessListener' in line:\n        line=line.replace('")).addOnFailureListener','");}).addOnFailureListener',1)\n    lines.append(line)\ns="\\n".join(lines)+"\\n"\n\np.write_text(s,encoding="utf-8")
+# Final line-level repair: the owner change-request callback must close the lambda before addOnFailureListener.\nlines=[]\nfor line in s.splitlines():\n    if 'db.collection("changeRequests").add(req).addOnSuccessListener' in line:\n        line=line.replace('")).addOnFailureListener','");}).addOnFailureListener',1)\n    lines.append(line)\ns="\\n".join(lines)+"\\n"\n\n# Navigation state: explicit source screen, inserted after all method rewrites so later replacements cannot remove it.
+if "boolean returnToAdminAfterForm=false;" not in s:
+    import re
+    m=re.search(r'(?m)^\s*void\s+setup\s*\(\s*\)\s*\{',s)
+    if not m:
+        raise SystemExit("setup method marker not found for navigation state")
+    s=s[:m.start()] + '    boolean returnToAdminAfterForm=false;\n\n' + s[m.start():]
+
+print("NAV STATE PRESENT BEFORE WRITE:", "returnToAdminAfterForm" in s)
+p.write_text(s,encoding="utf-8")
 print("V31 patch ready")
