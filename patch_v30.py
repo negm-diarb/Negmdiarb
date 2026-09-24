@@ -12,7 +12,7 @@ def rm(src,name,repl):
   if src[i]=="{": d+=1
   elif src[i]=="}":
    d-=1
-   if d==0: return src[:a]+repl+"\\n"+src[i+1:]
+   if d==0: return src[:a]+repl+"\n"+src[i+1:]
  raise SystemExit("unbalanced: "+name)
 
 s=rm(s,"addBusinessCard",r'''    void addBusinessCard(DocumentSnapshot d){
