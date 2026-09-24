@@ -11,7 +11,7 @@ if "void installPublicContributionButtons()" not in s:
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER);
         row.setTag("publicContributionRow");
-        Button suggest=btn("➕ اقترح إضافة منشأة");
+        Button suggest=btn("🏪 ضيف محلك ووسع تجارتك");
         Button service=btn("💬 الشكاوى والاقتراحات");
         styleAction(suggest,row);
         styleAction(service,row);
@@ -33,8 +33,8 @@ if "void installPublicContributionButtons()" not in s:
         EditText ds=new EditText(this);ds.setHint("وصف مختصر / الخدمات");ds.setMinLines(3);ds.setGravity(Gravity.TOP|Gravity.RIGHT);
         l.addView(nm);l.addView(cat);l.addView(ad);l.addView(ph);l.addView(ds);
         new AlertDialog.Builder(this)
-            .setTitle("➕ اقتراح إضافة منشأة")
-            .setMessage("سيصل الاقتراح للإدارة للمراجعة أولًا، ولن يظهر للمستخدمين إلا بعد اعتماد الإدارة.")
+            .setTitle("🏪 ضيف محلك ووسع تجارتك")
+            .setMessage("ضيف منشأتك وخلي الناس توصلك. البيانات تُعرض على الإدارة للمراجعة أولًا، ولن تظهر للمستخدمين إلا بعد اعتماد الإدارة.")
             .setView(l)
             .setPositiveButton("إرسال للإدارة",(d,w)->{
                 FirebaseUser u=auth.getCurrentUser();
