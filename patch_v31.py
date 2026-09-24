@@ -16,11 +16,11 @@ def method_replace(src,name,repl):
 
 # Navigation state: explicit source screen, never infer from adminMode.
 if "boolean returnToAdminAfterForm=false;" not in s:
-    marker='    void addBusinessCard(DocumentSnapshot d){'
-    if marker in s:
-        s=s.replace(marker, '    boolean returnToAdminAfterForm=false;\n\n'+marker, 1)
-    else:
-        raise SystemExit("stable insertion marker not found")
+    import re
+    m=re.search(r'(?m)^\s*void\s+addBusinessCard\s*\(\s*DocumentSnapshot\s+d\s*\)\s*\{',s)
+    if not m:
+        raise SystemExit("addBusinessCard signature not found for navigation state injection")
+    s=s[:m.start()] + '    boolean returnToAdminAfterForm=false;\n\n' + s[m.start():]
 
 s=s.replace('findViewById(R.id.btnAdminAddBusiness).setOnClickListener(v->{if(isMainAdmin()){clearForm();show(addPanel);}', 'findViewById(R.id.btnAdminAddBusiness).setOnClickListener(v->{if(isMainAdmin()){returnToAdminAfterForm=true;clearForm();show(addPanel);}')
 s=s.replace('findViewById(R.id.btnAdminAddOffer).setOnClickListener(v->openAdminOfferForm());', 'findViewById(R.id.btnAdminAddOffer).setOnClickListener(v->{returnToAdminAfterForm=true;openAdminOfferForm();});')
