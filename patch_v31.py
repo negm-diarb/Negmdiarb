@@ -170,6 +170,15 @@ if "boolean returnToAdminAfterForm=false;" not in s:
         raise SystemExit("setup method marker not found for navigation state")
     s=s[:m.start()] + '    boolean returnToAdminAfterForm=false;\n\n' + s[m.start():]
 
+# Deterministic repair of the owner change-request callback.
+owner_lines=[]
+for line in s.splitlines():
+    if 'db.collection("changeRequests").add(req).addOnSuccessListener' in line:
+        indent=line[:len(line)-len(line.lstrip())]
+        line=indent+'db.collection("changeRequests").add(req).addOnSuccessListener(x->{createAdminNotification("changeRequest",x.getId(),bid,"طلب تعديل منشأة","يوجد طلب تعديل يحتاج مراجعة.");addStatus.setText("✅ تم إرسال التعديل للإدارة. لن يظهر للعامة إلا بعد الموافقة.");}).addOnFailureListener(e->addStatus.setText("❌ تعذر إرسال الطلب: "+safe(e.getMessage())));'
+    owner_lines.append(line)
+s="\n".join(owner_lines)+"\n"
+
 print("NAV STATE PRESENT BEFORE WRITE:", "returnToAdminAfterForm" in s)
 p.write_text(s,encoding="utf-8")
 print("V31 patch ready")
