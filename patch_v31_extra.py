@@ -102,7 +102,7 @@ if "void installPublicContributionButtons()" not in s:
 
 # Put the two public buttons in the home screen after the home-status view is bound.
 if "installPublicContributionButtons();" not in s:
-    s=s.replace("    void setup(){" ,"    void setup(){\\n        installPublicContributionButtons();",1)
+    s=s.replace("    void setup(){","    void setup(){\n        installPublicContributionButtons();",1)
 
 # Let the existing admin requests section also show public business suggestions.
 s=s.replace(
