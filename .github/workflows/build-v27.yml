@@ -2,6 +2,10 @@ name: Build Negm Diarb V27
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/build-v27.yml"
+      - "NegmDiarb_V27_*.zip"
 
 jobs:
   build:
