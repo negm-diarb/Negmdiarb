@@ -161,11 +161,7 @@ s=s.replace('db.collection("changeRequests").add(req).addOnSuccessListener(x->ad
 # Hook offer creation without depending on method name.
 s=s.replace('db.collection("offers").add(m).addOnSuccessListener(x->{offerStatus.setText(admin?"✅ تم نشر العرض.":"✅ تم إرسال العرض للمراجعة.");', 'db.collection("offers").add(m).addOnSuccessListener(x->{if(!admin)createAdminNotification("offer",x.getId(),bid,"عرض جديد","يوجد عرض جديد يحتاج مراجعة.");offerStatus.setText(admin?"✅ تم نشر العرض.":"✅ تم إرسال العرض للمراجعة.");')
 
-# Hook complaints.
-s=s.replace('db.collection("complaints").add(m).addOnSuccessListener', 'db.collection("complaints").add(m).addOnSuccessListener(x->{createAdminNotification("complaint",x.getId(),"","شكوى/اقتراح جديد","يوجد طلب خدمة عملاء جديد يحتاج مراجعة.");')
-# If the previous replacement produced a doubled lambda, fix the common source form.
-s=s.replace('addOnSuccessListener(x->{createAdminNotification("complaint",x.getId(),"","شكوى/اقتراح جديد","يوجد طلب خدمة عملاء جديد يحتاج مراجعة.");(x->{', 'addOnSuccessListener(x->{createAdminNotification("complaint",x.getId(),"","شكوى/اقتراح جديد","يوجد طلب خدمة عملاء جديد يحتاج مراجعة.");')
-# Start listener when admin session is established.
+# Complaint notification hook deferred until the complaint method is replaced safely.\n# Start listener when admin session is established.
 s=s.replace('loadRoleData();', 'loadRoleData();if(isMainAdmin()){initAdminNotifications();startAdminNotificationListener();refreshAdminBadges();}', 2)
 
 p.write_text(s,encoding="utf-8")
