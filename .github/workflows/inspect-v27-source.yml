@@ -37,3 +37,28 @@ jobs:
           find build_v27/app/src/main/res -maxdepth 2 -type f \( -path '*/drawable/*' -o -path '*/mipmap-*/*' \) | sort
           echo "=== MANIFEST ==="
           sed -n '1,240p' build_v27/app/src/main/AndroidManifest.xml
+          echo "=== MAIN ACTIVITY 1-260 ==="
+          sed -n '1,260p' build_v27/app/src/main/java/com/negmdiarb/app/MainActivity.java
+          echo "=== MAIN ACTIVITY 261-520 ==="
+          sed -n '261,520p' build_v27/app/src/main/java/com/negmdiarb/app/MainActivity.java
+          echo "=== MAIN ACTIVITY 521-780 ==="
+          sed -n '521,780p' build_v27/app/src/main/java/com/negmdiarb/app/MainActivity.java
+          echo "=== MAIN ACTIVITY 781-980 ==="
+          sed -n '781,980p' build_v27/app/src/main/java/com/negmdiarb/app/MainActivity.java
+          echo "=== STRINGS ==="
+          sed -n '1,260p' build_v27/app/src/main/res/values/strings.xml
+          echo "=== COLORS ==="
+          sed -n '1,220p' build_v27/app/src/main/res/values/colors.xml
+          echo "=== STYLES ==="
+          sed -n '1,320p' build_v27/app/src/main/res/values/styles.xml
+
+      - name: Upload V27 source snapshot
+        run: |
+          cd build_v27
+          zip -qr ../NegmDiarb_V27_SourceSnapshot.zip .
+      - name: Upload source snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: NegmDiarb-V27-SourceSnapshot
+          path: NegmDiarb_V27_SourceSnapshot.zip
+          if-no-files-found: error
