@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Inspect targeted source
+      - name: Inspect exact methods
         run: |
           set -e
           rm -rf inspect && mkdir inspect
@@ -21,22 +21,29 @@ jobs:
             cp -a "$ROOT"/. inspect/
           fi
           J=inspect/app/src/main/java/com/negmdiarb/app/MainActivity.java
-          L=inspect/app/src/main/res/layout/activity_main.xml
           M=inspect/app/src/main/AndroidManifest.xml
-          echo "=== METHODS ==="
-          grep -nE '^    (void|boolean|String|LinearLayout|TextView|Button|interface|double|int) [A-Za-z0-9_]+\\(' "$J" | head -n 220
-          echo "=== TARGETED METHODS ==="
           python3 - "$J" <<'PY'
-          import sys
-          s=open(sys.argv[1],encoding='utf-8').read().splitlines()
-          targets=['showAdmin','addBusiness','saveBusiness','addOffer','createOwnerAccount','createAuthUser','loadRatings','loadOffers','loadRequests','loadComplaints','showRatingDialog','installBackHandler','renderThumbs','storage','showHome','showAdd','showOffer','showBusinessDetails']
-          for i,line in enumerate(s):
-              if any(t in line for t in targets):
-                  print(f"--- line {i+1}: {line.strip()} ---")
-                  for j in range(max(0,i-5),min(len(s),i+35)):
-                      print(f"{j+1}: {s[j]}")
+          import re,sys
+          lines=open(sys.argv[1],encoding='utf-8').read().splitlines()
+          sig=re.compile(r'^\\s+(?:public |private |protected )?(?:static )?(?:final )?[\\w<>?, .\\[\]]+\\s+(\\w+)\\s*\\([^;]*\\)\\s*\\{')
+          methods=[]
+          for i,line in enumerate(lines):
+              m=sig.match(line)
+              if m: methods.append((i+1,m.group(1),line.strip()))
+          print("=== ALL METHOD SIGNATURES ===")
+          for x in methods: print(f"{x[0]}: {x[2]}")
+          targets={'showAdmin','addBusiness','saveBusiness','addOffer','createOwnerAccount','createAuthUser','loadRatings','loadOffers','loadRequests','loadComplaints','showRatingDialog','installBackHandler','renderThumbs','uploadImages','uploadImage','showHome','showAdd','showOffers','showBusinessDetails','approveRating','approveOffer','approveBusiness','sendComplaint'}
+          print("=== TARGET METHOD BODIES ===")
+          for start,name,line in methods:
+              if name not in targets: continue
+              depth=0; started=False; end=start
+              for j in range(start-1,len(lines)):
+                  depth += lines[j].count('{')-lines[j].count('}')
+                  if '{' in lines[j]: started=True
+                  if started and depth==0:
+                      end=j+1; break
+              print(f"--- {name} lines {start}-{end} ---")
+              for j in range(start-1,min(end,start+220)-1): print(f"{j+1}: {lines[j]}")
           PY
           echo "=== MANIFEST ==="
           cat "$M"
-          echo "=== LAYOUT IDs/TEXT ==="
-          grep -nE 'android:id=|android:text=' "$L" | head -n 260
