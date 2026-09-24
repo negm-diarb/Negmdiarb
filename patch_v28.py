@@ -12,7 +12,7 @@ def replace_method(src, start_sig, end_sig, repl):
 
 s=JAVA.read_text(encoding='utf-8')
 
-s=replace_method(s,'    void addBusinessCard(DocumentSnapshot d){','    void toggleFavorite','''    void addBusinessCard(DocumentSnapshot d){
+s=replace_method(s,'    void addBusinessCard(DocumentSnapshot d){','    void toggleFavorite',r'''    void addBusinessCard(DocumentSnapshot d){
         LinearLayout card=box(); card.setElevation(dp(3));
         String n=safe(d.getString("name")); double avg=num(d,"ratingAvg");
         long cnt=d.getLong("ratingCount")==null?0:d.getLong("ratingCount");
@@ -38,7 +38,7 @@ s=replace_method(s,'    void addBusinessCard(DocumentSnapshot d){','    void tog
 
 ''')
 
-s=replace_method(s,'    void showRatingDialog(String bid){','    void sendComplaint','''    void showRatingDialog(String bid){
+s=replace_method(s,'    void showRatingDialog(String bid){','    void sendComplaint',r'''    void showRatingDialog(String bid){
         LinearLayout l=new LinearLayout(this); l.setOrientation(LinearLayout.VERTICAL); l.setPadding(dp(18),dp(8),dp(18),dp(6));
         TextView hint=tv("اختار عدد النجوم"); hint.setTextSize(15); hint.setTypeface(null,android.graphics.Typeface.BOLD); hint.setGravity(Gravity.CENTER); l.addView(hint);
         LinearLayout stars=new LinearLayout(this); stars.setOrientation(LinearLayout.HORIZONTAL); stars.setGravity(Gravity.CENTER); stars.setLayoutDirection(View.LAYOUT_DIRECTION_LTR); l.addView(stars,new LinearLayout.LayoutParams(-1,dp(62)));
@@ -56,7 +56,7 @@ s=replace_method(s,'    void showRatingDialog(String bid){','    void sendCompla
 ''')
 s=s.replace('        l.addView(tv("⭐ "+(avg==0?"جديد":String.format(Locale.US,"%.1f من %d تقييم",avg,cnt))));','        l.addView(buildStarsRow(avg,cnt,true));')
 
-s=replace_method(s,'    void createOwnerAccount(){','    interface UserMapBuilder','''    void createOwnerAccount(){
+s=replace_method(s,'    void createOwnerAccount(){','    interface UserMapBuilder',r'''    void createOwnerAccount(){
         if(!isMainAdmin()){toast("المدير الرئيسي فقط.");return;}
         db.collection("businesses").whereEqualTo("status","approved").limit(300).get().addOnSuccessListener(bs->{
             ArrayList<DocumentSnapshot> list=new ArrayList<>(); for(DocumentSnapshot b:bs)list.add(b); if(list.isEmpty()){toast("أضف منشأة أولًا ثم أنشئ حساب صاحبها.");return;}
