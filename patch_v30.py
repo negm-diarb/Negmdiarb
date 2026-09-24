@@ -71,6 +71,8 @@ helpers=r'''    void postAdminLocalNotification(String title,String body){
     }
 
 '''
+if "void postAdminLocalNotification(" not in s:
+ s=s.replace("    void installBackHandler()",helpers+"    void installBackHandler()",1)
 if "void returnToAdmin()" not in s:
  s=s.replace("    void installBackHandler()", "    void returnToAdmin(){show(adminPanel);refreshAdminBadges();}\n\n    void installBackHandler()", 1)
 s=rm(s,"installBackHandler",r'''    void installBackHandler(){
