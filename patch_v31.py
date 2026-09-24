@@ -174,10 +174,30 @@ if "boolean returnToAdminAfterForm=false;" not in s:
 owner_lines=[]
 for line in s.splitlines():
     if 'db.collection("changeRequests").add(req).addOnSuccessListener' in line:
-        indent=line[:len(line)-len(line.lstrip())]
-        line=indent+'db.collection("changeRequests").add(req).addOnSuccessListener(x->{createAdminNotification("changeRequest",x.getId(),bid,"طلب تعديل منشأة","يوجد طلب تعديل يحتاج مراجعة.");addStatus.setText("✅ تم إرسال التعديل للإدارة. لن يظهر للعامة إلا بعد الموافقة.");}).addOnFailureListener(e->addStatus.setText("❌ تعذر إرسال الطلب: "+safe(e.getMessage())));'
+        prefix=line.split('db.collection("changeRequests").add(req).addOnSuccessListener',1)[0]
+        line=prefix+'db.collection("changeRequests").add(req).addOnSuccessListener(x->{createAdminNotification("changeRequest",x.getId(),bid,"طلب تعديل منشأة","يوجد طلب تعديل يحتاج مراجعة.");addStatus.setText("✅ تم إرسال التعديل للإدارة. لن يظهر للعامة إلا بعد الموافقة.");}).addOnFailureListener(e->addStatus.setText("❌ تعذر إرسال الطلب: "+safe(e.getMessage())));'
     owner_lines.append(line)
 s="\n".join(owner_lines)+"\n"
+
+# Guarantee styleAction is a real top-level class method after all source rewrites.
+import re
+s=re.sub(r'\n    void styleAction\(Button b,LinearLayout row\)\{.*?\n    \}\n', '\n', s, count=1, flags=re.S)
+style_method='''    void styleAction(Button b,LinearLayout row){
+        b.setAllCaps(false);
+        b.setTextSize(12);
+        b.setMinWidth(0);
+        b.setMinHeight(0);
+        b.setSingleLine(true);
+        b.setGravity(Gravity.CENTER);
+        b.setPadding(dp(2),0,dp(2),0);
+        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,dp(44),1);
+        lp.setMargins(dp(2),dp(2),dp(2),dp(2));
+        row.addView(b,lp);
+    }
+'''
+pos=s.rfind("\n}")
+if pos<0: raise SystemExit("class closing brace not found for styleAction")
+s=s[:pos]+"\n"+style_method+s[pos:]
 
 print("NAV STATE PRESENT BEFORE WRITE:", "returnToAdminAfterForm" in s)
 p.write_text(s,encoding="utf-8")
