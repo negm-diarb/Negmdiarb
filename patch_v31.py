@@ -175,7 +175,7 @@ owner_lines=[]
 for line in s.splitlines():
     if 'db.collection("changeRequests").add(req).addOnSuccessListener' in line:
         prefix=line.split('db.collection("changeRequests").add(req).addOnSuccessListener',1)[0]
-        line=prefix+'db.collection("changeRequests").add(req).addOnSuccessListener(x->{createAdminNotification("changeRequest",x.getId(),bid,"طلب تعديل منشأة","يوجد طلب تعديل يحتاج مراجعة.");addStatus.setText("✅ تم إرسال التعديل للإدارة. لن يظهر للعامة إلا بعد الموافقة.");}).addOnFailureListener(e->addStatus.setText("❌ تعذر إرسال الطلب: "+safe(e.getMessage())));'
+        line=prefix+'db.collection("changeRequests").add(req).addOnSuccessListener(x->{createAdminNotification("changeRequest",x.getId(),bid,"طلب تعديل منشأة","يوجد طلب تعديل يحتاج مراجعة.");addStatus.setText("✅ تم إرسال التعديل للإدارة. لن يظهر للعامة إلا بعد الموافقة.");}).addOnFailureListener(e->addStatus.setText("❌ تعذر إرسال الطلب: "+safe(e.getMessage())));});'
     owner_lines.append(line)
 s="\n".join(owner_lines)+"\n"
 
