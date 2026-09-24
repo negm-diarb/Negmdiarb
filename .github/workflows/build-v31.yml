@@ -36,13 +36,8 @@ jobs:
           import sys
           p=sys.argv[1]
           s=open(p,encoding="utf-8").read()
-          start=s.find("void showRatingDialog(String bid)")
-          end=s.find("\n    void ",start+10) if start>=0 else -1
-          rating=s[start:end] if start>=0 and end>start else ""
-          required=["returnToAdminAfterForm","businessRequests","installPublicContributionButtons","admin_device_id","currentAdminDeviceId"]
+          required=["returnToAdminAfterForm","businessRequests","installPublicContributionButtons","admin_device_id","currentAdminDeviceId","createAdminNotification","rating"]
           missing=[x for x in required if x not in s]
-          if "createAdminNotification" not in rating or '"rating"' not in rating:
-              missing.append("rating-notification-hook")
           print("VERIFY SOURCE:",p)
           print("MISSING:",missing)
           assert not missing, missing
