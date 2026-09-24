@@ -31,10 +31,7 @@ needle='''findViewById(R.id.btnStaffPublicLogin).setOnClickListener(v->staffLogi
 if needle in s and 'homeStatus.setOnLongClickListener' not in s:
     s=s.replace(needle,needle+'''
         homeStatus.setOnLongClickListener(v->{staffLogin();return true;});
-        homeStatus.setOnClickListener(v->{
-            adminTapCount++;
-            if(adminTapCount>=7){adminTapCount=0;staffLogin();}
-        });''',1)
+''',1)
 
 # Keep device binding when logging out. Session state can be reset, but the enrolled device must remain.
 s=s.replace('adminPrefs().edit().clear().apply();','adminPrefs().edit().remove("admin_session").apply();')
