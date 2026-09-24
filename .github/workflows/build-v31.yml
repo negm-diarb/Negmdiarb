@@ -36,7 +36,7 @@ jobs:
           import sys
           p=sys.argv[1]
           s=open(p,encoding="utf-8").read()
-          required=["returnToAdminAfterForm","businessRequests","installPublicContributionButtons","admin_device_id","currentAdminDeviceId","createAdminNotification","rating"]
+          required=["returnToAdminAfterForm","businessRequests","installPublicContributionButtons","admin_device_id","currentAdminDeviceId","createAdminNotification","adminComplaintListener","styleAction","businessName","rating"]
           missing=[x for x in required if x not in s]
           print("VERIFY SOURCE:",p)
           print("MISSING:",missing)
