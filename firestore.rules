@@ -1,0 +1,91 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function userDoc() { return get(/databases/$(database)/documents/users/$(request.auth.uid)); }
+    function isAdmin() { return signedIn() && userDoc().data.role == 'admin' && userDoc().data.enabled == true; }
+    function isOwner() { return signedIn() && userDoc().data.role == 'owner' && userDoc().data.enabled == true; }
+    function isReviewer() { return signedIn() && userDoc().data.role == 'establishment_reviewer' && userDoc().data.enabled == true; }
+    function isCustomerService() { return signedIn() && userDoc().data.role == 'customer_service' && userDoc().data.enabled == true; }
+    function isOffersManager() { return signedIn() && userDoc().data.role == 'offers_manager' && userDoc().data.enabled == true; }
+
+    match /businesses/{id} {
+      allow read: if (resource.data.status == 'approved' && resource.data.active == true) || isAdmin();
+      allow create: if isAdmin()
+        && request.resource.data.status == 'approved'
+        && request.resource.data.active == true
+        && (!request.resource.data.keys().hasAny(['ownerUid']) || request.resource.data.ownerUid == '');
+      allow update: if isAdmin() && (
+        !request.resource.data.keys().hasAny(['ownerUid'])
+        || request.resource.data.ownerUid == resource.data.ownerUid
+        || (
+          request.resource.data.ownerUid is string
+          && request.resource.data.ownerUid != ''
+          && getAfter(/databases/$(database)/documents/users/$(request.resource.data.ownerUid)).data.role == 'owner'
+          && getAfter(/databases/$(database)/documents/users/$(request.resource.data.ownerUid)).data.businessId == id
+          && (!resource.data.keys().hasAny(['ownerUid']) || resource.data.ownerUid == '')
+        )
+      );
+      allow delete: if isAdmin();
+    }
+
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow create: if isAdmin()
+        && request.resource.data.enabled == true
+        && request.resource.data.role in ['owner','customer_service','establishment_reviewer','offers_manager']
+        && (
+          request.resource.data.role != 'owner'
+          || (
+            request.resource.data.businessId is string
+            && request.resource.data.businessId != ''
+            && get(/databases/$(database)/documents/businesses/$(request.resource.data.businessId)).data.status == 'approved'
+            && get(/databases/$(database)/documents/businesses/$(request.resource.data.businessId)).data.active == true
+            && (!get(/databases/$(database)/documents/businesses/$(request.resource.data.businessId)).data.keys().hasAny(['ownerUid'])
+                || get(/databases/$(database)/documents/businesses/$(request.resource.data.businessId)).data.ownerUid == '')
+          )
+        );
+      allow update: if isAdmin()
+        || (request.auth.uid == uid
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.enabled == resource.data.enabled
+          && request.resource.data.businessId == resource.data.businessId
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName','phone','email']));
+      allow delete: if isAdmin();
+    }
+
+    match /changeRequests/{id} {
+      allow create: if isOwner() && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.changes is map
+        && request.resource.data.changes.keys().hasOnly(['name','phone','whatsapp','facebook','address','description','hours','services','website','category','lat','lng']);
+      allow read: if isAdmin() || isReviewer() || (isOwner() && resource.data.ownerUid == request.auth.uid);
+      allow update, delete: if isAdmin()
+        || (isReviewer() && resource.data.status == 'pending' && request.resource.data.status == 'reviewed'
+          && request.resource.data.reviewedBy == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','reviewedBy','reviewedAt']));
+    }
+
+    match /offers/{id} {
+      allow read: if resource.data.active == true || isAdmin() || isOffersManager() || (isOwner() && resource.data.ownerUid == request.auth.uid);
+      allow create: if (isAdmin() && request.resource.data.status == 'approved')
+        || (isOwner() && request.resource.data.ownerUid == request.auth.uid && request.resource.data.status == 'pending');
+      allow update, delete: if isAdmin() || isOffersManager()
+        || (isOwner() && request.resource.data.ownerUid == request.auth.uid && request.resource.data.status == 'pending');
+    }
+
+    match /ratings/{id} {
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid
+        && request.resource.data.stars >= 1 && request.resource.data.stars <= 5;
+      allow read: if isAdmin() || resource.data.status == 'approved';
+      allow update, delete: if isAdmin();
+    }
+    match /complaints/{id} { allow create: if signedIn(); allow read, update, delete: if isAdmin() || isCustomerService(); }
+    match /favorites/{id} { allow create: if signedIn() && request.resource.data.uid == request.auth.uid; allow read: if signedIn() && (resource.data.uid == request.auth.uid || isAdmin()); allow delete: if signedIn() && (resource.data.uid == request.auth.uid || isAdmin()); }
+    match /businessViews/{id} { allow create: if signedIn(); allow read: if isAdmin(); }
+    match /callClicks/{id} { allow create: if signedIn(); allow read: if isAdmin(); }
+    match /mapClicks/{id} { allow create: if signedIn(); allow read: if isAdmin(); }
+    match /favoriteClicks/{id} { allow create: if signedIn(); allow read: if isAdmin(); }
+    match /whatsappClicks/{id} { allow create: if signedIn(); allow read: if isAdmin(); }
+  }
+}
