@@ -1,0 +1,35 @@
+name: Inspect V27 Source Temporarily
+
+on:
+  push:
+    paths:
+      - ".github/workflows/inspect-v27-source.yml"
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect source
+        run: |
+          set -e
+          rm -rf inspect
+          mkdir inspect
+          unzip -q NegmDiarb_V27_GrandSecurityUpdate.zip -d inspect
+          if [ ! -f inspect/settings.gradle ] && [ ! -f inspect/settings.gradle.kts ]; then
+            ROOT="$(find inspect -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+            shopt -s dotglob
+            cp -a "$ROOT"/. inspect/
+          fi
+          echo "=== FILE LIST ==="
+          find inspect/app/src/main -maxdepth 5 -type f | sort
+          echo "=== MAIN ACTIVITY ==="
+          sed -n '1,260p' inspect/app/src/main/java/com/negmdiarb/app/MainActivity.java
+          echo "=== MAIN ACTIVITY 261-620 ==="
+          sed -n '261,620p' inspect/app/src/main/java/com/negmdiarb/app/MainActivity.java
+          echo "=== MAIN ACTIVITY 621-980 ==="
+          sed -n '621,980p' inspect/app/src/main/java/com/negmdiarb/app/MainActivity.java
+          echo "=== LAYOUT ==="
+          sed -n '1,320p' inspect/app/src/main/res/layout/activity_main.xml
+          echo "=== GRADLE ==="
+          cat inspect/app/build.gradle 2>/dev/null || cat inspect/app/build.gradle.kts
