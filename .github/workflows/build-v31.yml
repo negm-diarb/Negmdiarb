@@ -30,12 +30,14 @@ jobs:
           python3 "$GITHUB_WORKSPACE/patch_v31.py"
           python3 "$GITHUB_WORKSPACE/patch_v31_extra.py"
           python3 "$GITHUB_WORKSPACE/patch_v31_security.py"
-          grep -q 'returnToAdminAfterForm' app/src/main/java/com/negmdiarb/app/MainActivity.java
-          grep -q 'createAdminNotification("rating"' app/src/main/java/com/negmdiarb/app/MainActivity.java
-          grep -q 'businessRequests' app/src/main/java/com/negmdiarb/app/MainActivity.java
-          grep -q 'installPublicContributionButtons' app/src/main/java/com/negmdiarb/app/MainActivity.java
-          grep -q 'admin_device_id' app/src/main/java/com/negmdiarb/app/MainActivity.java
-          grep -q 'currentAdminDeviceId' app/src/main/java/com/negmdiarb/app/MainActivity.java
+          MAIN="$(find app/src/main/java -name MainActivity.java | head -n 1)"
+          test -n "$MAIN"
+          grep -q 'returnToAdminAfterForm' "$MAIN"
+          grep -q 'createAdminNotification("rating"' "$MAIN"
+          grep -q 'businessRequests' "$MAIN"
+          grep -q 'installPublicContributionButtons' "$MAIN"
+          grep -q 'admin_device_id' "$MAIN"
+          grep -q 'currentAdminDeviceId' "$MAIN"
       - name: Version
         working-directory: build_v31
         run: |
