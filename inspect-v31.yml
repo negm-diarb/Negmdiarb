@@ -1,0 +1,40 @@
+name: Inspect V28 source for V31
+on:
+  push:
+    paths:
+      - "inspect-v31.yml"
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract V27 and apply V28
+        run: |
+          set -e
+          ZIP="$(find . -maxdepth 1 -type f -iname 'NegmDiarb_V27_*.zip' | head -n 1)"
+          rm -rf build_inspect
+          mkdir build_inspect
+          unzip -q "$ZIP" -d build_inspect
+          if [ ! -f build_inspect/settings.gradle ] && [ ! -f build_inspect/settings.gradle.kts ]; then
+            ROOT="$(find build_inspect -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+            shopt -s dotglob; cp -a "$ROOT"/. build_inspect/; rm -rf "$ROOT"
+          fi
+          cd build_inspect
+          python3 "$GITHUB_WORKSPACE/patch_v28.py"
+      - name: Print relevant source
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("build_inspect/app/src/main/java/com/negmdiarb/app/MainActivity.java")
+          s=p.read_text(encoding="utf-8")
+          keys=["addBusinessCard","loadRatings","showRatingDialog","saveRating","installBackHandler","btnBackAdd","btnBackOffers","btnAdminAddBusiness","btnAdminOffers","changeRequests","complaints","showOffer","saveOffer","businesses"]
+          for k in keys:
+            print("\n===== "+k+" =====")
+            pos=0; count=0
+            while True:
+              i=s.find(k,pos)
+              if i<0 or count>=3: break
+              a=max(0,i-1200); b=min(len(s),i+2500)
+              print(s[a:b])
+              pos=i+len(k); count+=1
+          PY
