@@ -56,7 +56,7 @@ s=rm(s,"loadRatings",r'''    void loadRatings(){
         }).addOnFailureListener(e->addText(adminRatingList,"تعذر تحميل التقييمات: "+safe(e.getMessage())));
     }''')
 
-if "adminReturnToPanel" not in s:s=s.replace("int adminReturnSection=0;","int adminReturnSection=0; boolean adminReturnToPanel=false;")
+if "boolean adminReturnToPanel" not in s:s=s.replace("int adminReturnSection=0;","int adminReturnSection=0; boolean adminReturnToPanel=false;")
 s=rm(s,"installBackHandler",r'''    void installBackHandler(){
         getOnBackPressedDispatcher().addCallback(this,new OnBackPressedCallback(true){
             @Override public void handleOnBackPressed(){
