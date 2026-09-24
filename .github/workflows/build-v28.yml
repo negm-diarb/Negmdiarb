@@ -1,0 +1,137 @@
+name: Build Negm Diarb V28 Professional
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "patch_v28.py"
+      - "firestore.rules"
+      - "storage.rules"
+      - ".github/workflows/build-v28.yml"
+      - "NegmDiarb_V27_*.zip"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Extract V27 source as V28 base
+        run: |
+          set -e
+          ZIP="$(find . -maxdepth 1 -type f -iname 'NegmDiarb_V27_*.zip' | head -n 1)"
+          test -n "$ZIP"
+          rm -rf build_v28
+          mkdir -p build_v28
+          unzip -q "$ZIP" -d build_v28
+          if [ ! -f build_v28/settings.gradle ] && [ ! -f build_v28/settings.gradle.kts ]; then
+            ROOT="$(find build_v28 -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+            shopt -s dotglob
+            cp -a "$ROOT"/. build_v28/
+            rm -rf "$ROOT"
+          fi
+          test -f build_v28/settings.gradle || test -f build_v28/settings.gradle.kts
+          test -f build_v28/app/build.gradle || test -f build_v28/app/build.gradle.kts
+          echo "Using source: $ZIP"
+
+      - name: Apply V28 professional fixes
+        run: |
+          set -e
+          cd build_v28
+          python3 "$GITHUB_WORKSPACE/patch_v28.py"
+          test -f app/src/main/res/drawable/ic_launcher.xml
+          test ! -f app/src/main/res/drawable/ic_launcher.png
+
+      - name: Force V28 version
+        working-directory: build_v28
+        run: |
+          set -e
+          FILE="app/build.gradle"
+          [ -f "$FILE" ] || FILE="app/build.gradle.kts"
+          python3 - "$FILE" <<'PY'
+          import re,sys
+          p=sys.argv[1]
+          s=open(p,encoding="utf-8").read()
+          s,n=re.subn(r'versionCode\s*(?:=\s*)?\d+','versionCode = 28',s,count=1)
+          s,m=re.subn(r'versionName\s*(?:=\s*)?["\'][^"\']*["\']','versionName = "v28-professional-1.0"',s,count=1)
+          if n!=1 or m!=1: raise SystemExit("Could not set V28 version.")
+          open(p,"w",encoding="utf-8").write(s)
+          PY
+          grep -R "com.negmdiarb.app" app --include="*.gradle" --include="*.gradle.kts"
+          grep -R "versionCode" app --include="*.gradle" --include="*.gradle.kts"
+          grep -R "versionName" app --include="*.gradle" --include="*.gradle.kts"
+
+      - name: Prepare stable signing key
+        env:
+          NEGMDIARB_KEYSTORE_B64: ${{ secrets.NEGMDIARB_KEYSTORE_B64 }}
+        run: |
+          set -e
+          test -n "$NEGMDIARB_KEYSTORE_B64"
+          echo "$NEGMDIARB_KEYSTORE_B64" | base64 --decode > "$GITHUB_WORKSPACE/negmdiarb-release.jks"
+          test -s "$GITHUB_WORKSPACE/negmdiarb-release.jks"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Create Gradle Wrapper
+        working-directory: build_v28
+        run: |
+          set -e
+          gradle wrapper --gradle-version 8.7
+          chmod +x gradlew
+
+      - name: Build V28 signed release
+        working-directory: build_v28
+        env:
+          NEGMDIARB_KEYSTORE_FILE: ${{ github.workspace }}/negmdiarb-release.jks
+          NEGMDIARB_KEYSTORE_PASSWORD: ${{ secrets.NEGMDIARB_KEYSTORE_PASSWORD }}
+          NEGMDIARB_KEY_ALIAS: ${{ secrets.NEGMDIARB_KEY_ALIAS }}
+          NEGMDIARB_KEY_PASSWORD: ${{ secrets.NEGMDIARB_KEY_PASSWORD }}
+        run: |
+          set -e
+          ./gradlew clean assembleRelease --no-daemon --stacktrace
+
+      - name: Check APK
+        run: |
+          set -e
+          APK="build_v28/app/build/outputs/apk/release/app-release.apk"
+          test -f "$APK"
+          ls -lh "$APK"
+
+      - name: Verify APK signature
+        run: |
+          set -e
+          APK="build_v28/app/build/outputs/apk/release/app-release.apk"
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -n 1)"
+          "$APKSIGNER" verify --verbose "$APK"
+          "$APKSIGNER" verify --print-certs "$APK"
+
+      - name: Prepare V28 artifact
+        run: |
+          set -e
+          mkdir -p out
+          cp build_v28/app/build/outputs/apk/release/app-release.apk out/NegmDiarb-V28-Professional-Signed.apk
+          cp firestore.rules out/firestore.rules
+          cp storage.rules out/storage.rules
+
+      - name: Upload V28 APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: NegmDiarb-V28-Professional
+          path: |
+            out/NegmDiarb-V28-Professional-Signed.apk
+            out/firestore.rules
+            out/storage.rules
+          if-no-files-found: error
+
+      - name: Build completed
+        run: |
+          echo "NEGMDIARB V28 - PROFESSIONAL BUILD COMPLETED"
