@@ -16,15 +16,11 @@ def method_replace(src,name,repl):
 
 # Navigation state: explicit source screen, never infer from adminMode.
 if "boolean returnToAdminAfterForm=false;" not in s:
-    marker='public class MainActivity extends AppCompatActivity {'
+    marker='    void addBusinessCard(DocumentSnapshot d){'
     if marker in s:
-        s=s.replace(marker, marker+'\n    boolean returnToAdminAfterForm=false;', 1)
+        s=s.replace(marker, '    boolean returnToAdminAfterForm=false;\n\n'+marker, 1)
     else:
-        marker2='public class MainActivity extends Activity {'
-        if marker2 in s:
-            s=s.replace(marker2, marker2+'\n    boolean returnToAdminAfterForm=false;', 1)
-        else:
-            raise SystemExit("MainActivity class marker not found")
+        raise SystemExit("stable insertion marker not found")
 
 s=s.replace('findViewById(R.id.btnAdminAddBusiness).setOnClickListener(v->{if(isMainAdmin()){clearForm();show(addPanel);}', 'findViewById(R.id.btnAdminAddBusiness).setOnClickListener(v->{if(isMainAdmin()){returnToAdminAfterForm=true;clearForm();show(addPanel);}')
 s=s.replace('findViewById(R.id.btnAdminAddOffer).setOnClickListener(v->openAdminOfferForm());', 'findViewById(R.id.btnAdminAddOffer).setOnClickListener(v->{returnToAdminAfterForm=true;openAdminOfferForm();});')
