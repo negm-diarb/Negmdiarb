@@ -1,0 +1,39 @@
+name: Inspect V27 Source
+
+on:
+  push:
+    paths:
+      - ".github/workflows/inspect-v27-source.yml"
+  workflow_dispatch:
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Extract source and inspect
+        run: |
+          set -e
+          ZIP="$(find . -maxdepth 1 -type f -iname 'NegmDiarb_V27_*.zip' | head -n 1)"
+          mkdir -p build_v27
+          unzip -q "$ZIP" -d build_v27
+          ROOT="$(find build_v27 -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+          if [ -n "$ROOT" ] && [ ! -f build_v27/settings.gradle ] && [ ! -f build_v27/settings.gradle.kts ]; then
+            shopt -s dotglob
+            cp -a "$ROOT"/. build_v27/
+          fi
+          echo "=== SOURCE FILES ==="
+          find build_v27/app/src/main -type f | sort
+          echo "=== JAVA/KOTLIN FILES ==="
+          find build_v27/app/src/main -type f \( -name '*.java' -o -name '*.kt' \) -print | sort
+          echo "=== IMAGE/FIREBASE KEYWORDS ==="
+          grep -RniE 'FirebaseStorage|StorageReference|putFile|putBytes|downloadUrl|imageUrls|images|photo|photos|gallery|camera|rating|RatingBar|ratingBar|star|favorite' build_v27/app/src/main --include='*.java' --include='*.kt' --include='*.xml' | head -n 500 || true
+          echo "=== DRAWABLES/MIPMAPS ==="
+          find build_v27/app/src/main/res -maxdepth 2 -type f \( -path '*/drawable/*' -o -path '*/mipmap-*/*' \) | sort
+          echo "=== MANIFEST ==="
+          sed -n '1,240p' build_v27/app/src/main/AndroidManifest.xml
