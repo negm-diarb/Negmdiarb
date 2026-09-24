@@ -5,6 +5,7 @@ on:
     paths:
       - "patch_v31.py"
       - "patch_v31_extra.py"
+      - "patch_v31_security.py"
       - ".github/workflows/build-v31.yml"
       - "NegmDiarb_V27_GrandSecurityUpdate.zip"
 jobs:
@@ -28,10 +29,13 @@ jobs:
           python3 "$GITHUB_WORKSPACE/patch_v28.py"
           python3 "$GITHUB_WORKSPACE/patch_v31.py"
           python3 "$GITHUB_WORKSPACE/patch_v31_extra.py"
+          python3 "$GITHUB_WORKSPACE/patch_v31_security.py"
           grep -q 'returnToAdminAfterForm' app/src/main/java/com/negmdiarb/app/MainActivity.java
           grep -q 'createAdminNotification("rating"' app/src/main/java/com/negmdiarb/app/MainActivity.java
           grep -q 'businessRequests' app/src/main/java/com/negmdiarb/app/MainActivity.java
           grep -q 'installPublicContributionButtons' app/src/main/java/com/negmdiarb/app/MainActivity.java
+          grep -q 'admin_device_id' app/src/main/java/com/negmdiarb/app/MainActivity.java
+          grep -q 'currentAdminDeviceId' app/src/main/java/com/negmdiarb/app/MainActivity.java
       - name: Version
         working-directory: build_v31
         run: |
