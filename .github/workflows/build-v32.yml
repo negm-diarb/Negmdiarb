@@ -1,0 +1,124 @@
+name: Build Negm Diarb V32 From Stable V30
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "patch_v28.py"
+      - "patch_v29.py"
+      - "patch_v30.py"
+      - "firestore.rules"
+      - "storage.rules"
+      - "assets/negm_icon_user.jpg"
+      - ".github/workflows/build-v32.yml"
+      - "NegmDiarb_V27_GrandSecurityUpdate.zip"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Extract the exact V30 source pipeline
+        run: |
+          set -e
+          ZIP="$(find . -maxdepth 1 -type f -iname 'NegmDiarb_V27_*.zip' | head -n 1)"
+          test -n "$ZIP"
+          rm -rf build_v32 && mkdir build_v32
+          unzip -q "$ZIP" -d build_v32
+          if [ ! -f build_v32/settings.gradle ] && [ ! -f build_v32/settings.gradle.kts ]; then
+            ROOT="$(find build_v32 -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+            shopt -s dotglob
+            cp -a "$ROOT"/. build_v32/
+            rm -rf "$ROOT"
+          fi
+          test -f build_v32/settings.gradle || test -f build_v32/settings.gradle.kts
+
+      - name: Apply V28 exactly
+        working-directory: build_v32
+        run: python3 "$GITHUB_WORKSPACE/patch_v28.py"
+
+      - name: Apply V29 exactly
+        working-directory: build_v32
+        run: python3 "$GITHUB_WORKSPACE/patch_v29.py"
+
+      - name: Apply V30 exactly
+        working-directory: build_v32
+        run: python3 "$GITHUB_WORKSPACE/patch_v30.py"
+
+      - name: Safety check - no V31 security patch
+        working-directory: build_v32
+        run: |
+          set -e
+          grep -q 'boolean isMainAdmin()' app/src/main/java/com/negmdiarb/app/MainActivity.java
+          if grep -q 'currentAdminDeviceId' app/src/main/java/com/negmdiarb/app/MainActivity.java; then
+            echo "Unexpected V31 device-binding code detected"
+            exit 1
+          fi
+          echo "Stable V30 admin authentication path preserved."
+
+      - name: Set update version
+        working-directory: build_v32
+        run: |
+          set -e
+          FILE="app/build.gradle"
+          [ -f "$FILE" ] || FILE="app/build.gradle.kts"
+          python3 - "$FILE" <<'PY'
+          import re,sys
+          p=sys.argv[1]
+          s=open(p,encoding="utf-8").read()
+          s,n=re.subn(r'versionCode\s*(?:=\s*)?\d+','versionCode = 32',s,count=1)
+          s,m=re.subn(r'versionName\s*(?:=\s*)?["\'][^"\']*["\']','versionName = "v32-stable-v30-base-1.0"',s,count=1)
+          if n!=1 or m!=1: raise SystemExit("version update failed")
+          open(p,"w",encoding="utf-8").write(s)
+          PY
+
+      - name: Signing key
+        env:
+          K: ${{ secrets.NEGMDIARB_KEYSTORE_B64 }}
+        run: |
+          set -e
+          test -n "$K"
+          echo "$K" | base64 --decode > "$GITHUB_WORKSPACE/negmdiarb-release.jks"
+
+      - name: Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Wrapper
+        working-directory: build_v32
+        run: |
+          gradle wrapper --gradle-version 8.7
+          chmod +x gradlew
+
+      - name: Build signed V32
+        working-directory: build_v32
+        env:
+          NEGMDIARB_KEYSTORE_FILE: ${{ github.workspace }}/negmdiarb-release.jks
+          NEGMDIARB_KEYSTORE_PASSWORD: ${{ secrets.NEGMDIARB_KEYSTORE_PASSWORD }}
+          NEGMDIARB_KEY_ALIAS: ${{ secrets.NEGMDIARB_KEY_ALIAS }}
+          NEGMDIARB_KEY_PASSWORD: ${{ secrets.NEGMDIARB_KEY_PASSWORD }}
+        run: ./gradlew clean assembleRelease --no-daemon --stacktrace
+
+      - name: Verify version and signature
+        run: |
+          set -e
+          APK="build_v32/app/build/outputs/apk/release/app-release.apk"
+          test -f "$APK"
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -n 1)"
+          "$APKSIGNER" verify --verbose "$APK"
+          "$APKSIGNER" verify --print-certs "$APK" | tee /tmp/certs.txt
+          grep -q 'a4e0ab397c04a777877cd88fb429a7ee1f537de33c073032fb2b7f159e6cc830' /tmp/certs.txt
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: NegmDiarb-V32-Stable-V30-Base
+          path: build_v32/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
