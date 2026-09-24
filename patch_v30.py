@@ -57,6 +57,20 @@ s=rm(s,"loadRatings",r'''    void loadRatings(){
     }''')
 
 if "boolean adminReturnToPanel" not in s:s=s.replace("    void installBackHandler()","    boolean adminReturnToPanel=false;\n\n    void installBackHandler()",1)
+helpers=r'''    void postAdminLocalNotification(String title,String body){
+        android.app.Notification.Builder b;
+        if(android.os.Build.VERSION.SDK_INT>=26)b=new android.app.Notification.Builder(this,"admin_review");else b=new android.app.Notification.Builder(this);
+        b.setSmallIcon(android.R.drawable.ic_dialog_info).setContentTitle(title).setContentText(body).setAutoCancel(true);
+        android.app.NotificationManager nm=(android.app.NotificationManager)getSystemService(NOTIFICATION_SERVICE);
+        if(nm!=null)nm.notify((int)(System.currentTimeMillis()%100000),b.build());
+    }
+    void refreshAdminBadges(){
+        if(!isMainAdmin()||db==null)return;
+        String[][] q={{"changeRequests","status","pending","طلبات",String.valueOf(R.id.btnAdminRequests)},{"offers","status","pending","عروض",String.valueOf(R.id.btnAdminOffers)},{"ratings","status","pending","تقييمات",String.valueOf(R.id.btnAdminRatings)}};
+        for(String[] x:q){try{TextView v=findViewById(Integer.parseInt(x[4]));if(v!=null)db.collection(x[0]).whereEqualTo(x[1],x[2]).get().addOnSuccessListener(z->{String base=v.getText().toString().replaceAll("\\s*•\\s*\\d+$","");v.setText(z.size()>0?base+" • "+z.size():base);});}catch(Exception ignored){}}
+    }
+
+'''
 if "void returnToAdmin()" not in s:
  s=s.replace("    void installBackHandler()", "    void returnToAdmin(){show(adminPanel);refreshAdminBadges();}\n\n    void installBackHandler()", 1)
 s=rm(s,"installBackHandler",r'''    void installBackHandler(){
