@@ -87,5 +87,12 @@ service cloud.firestore {
     match /mapClicks/{id} { allow create: if signedIn(); allow read: if isAdmin(); }
     match /favoriteClicks/{id} { allow create: if signedIn(); allow read: if isAdmin(); }
     match /whatsappClicks/{id} { allow create: if signedIn(); allow read: if isAdmin(); }
+
+    match /adminNotifications/{id} {
+      allow create: if signedIn()
+        && request.resource.data.status == 'pending'
+        && request.resource.data.type in ['rating','offer','complaint','changeRequest','business'];
+      allow read, update, delete: if isAdmin();
+    }
   }
 }
