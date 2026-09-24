@@ -153,7 +153,7 @@ if "void createAdminNotification(String type,String itemId" not in s:
         if(android.os.Build.VERSION.SDK_INT>=33 && checkSelfPermission("android.permission.POST_NOTIFICATIONS")!=PackageManager.PERMISSION_GRANTED)
             requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"},9001);
     }'''
-    s=s.replace("    void installBackHandler()",helpers+init_method+"\n",1))
+    s=s.replace("    void installBackHandler()",helpers+init_method+"\n",1)
 
 # Hook owner change requests.
 s=s.replace('db.collection("changeRequests").add(req).addOnSuccessListener(x->addStatus.setText("✅ تم إرسال التعديل للإدارة.', 'db.collection("changeRequests").add(req).addOnSuccessListener(x->{createAdminNotification("changeRequest",x.getId(),bid,"طلب تعديل منشأة","يوجد طلب تعديل يحتاج مراجعة.");addStatus.setText("✅ تم إرسال التعديل للإدارة.')
