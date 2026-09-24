@@ -107,7 +107,9 @@ method_replace(s,"showRatingDialog",'''    void showRatingDialog(String bid){
 
 # Central notification writer + listener. Local notification is only possible while the admin app is running.
 helpers = '''    com.google.firebase.firestore.ListenerRegistration adminNotificationListener;
+    com.google.firebase.firestore.ListenerRegistration adminComplaintListener;
     boolean adminNotificationBaselineReady=false;
+    boolean adminComplaintBaselineReady=false;
     void createAdminNotification(String type,String itemId,String businessId,String title,String body){
         if(db==null)return;
         Map<String,Object> n=new HashMap<>();n.put("type",type);n.put("itemId",itemId==null?"":itemId);n.put("businessId",businessId==null?"":businessId);n.put("title",title);n.put("body",body);n.put("status","pending");n.put("createdAt",FieldValue.serverTimestamp());
@@ -116,7 +118,9 @@ helpers = '''    com.google.firebase.firestore.ListenerRegistration adminNotific
     void startAdminNotificationListener(){
         if(!isMainAdmin()||db==null)return;
         if(adminNotificationListener!=null)adminNotificationListener.remove();
+        if(adminComplaintListener!=null)adminComplaintListener.remove();
         adminNotificationBaselineReady=false;
+        adminComplaintBaselineReady=false;
         adminNotificationListener=db.collection("adminNotifications").whereEqualTo("status","pending").addSnapshotListener((snap,e)->{
             if(e!=null||snap==null)return;
             if(!adminNotificationBaselineReady){adminNotificationBaselineReady=true;refreshAdminBadges();return;}
@@ -124,6 +128,17 @@ helpers = '''    com.google.firebase.firestore.ListenerRegistration adminNotific
                 DocumentSnapshot d=ch.getDocument();postAdminLocalNotification(safe(d.getString("title")),safe(d.getString("body")));
             }
             refreshAdminBadges();
+        });
+        adminComplaintListener=db.collection("complaints").addSnapshotListener((snap,e)->{
+            if(e!=null||snap==null)return;
+            if(!adminComplaintBaselineReady){adminComplaintBaselineReady=true;return;}
+            for(DocumentChange ch:snap.getDocumentChanges())if(ch.getType()==DocumentChange.Type.ADDED){
+                DocumentSnapshot d=ch.getDocument();
+                String title="شكوى أو اقتراح جديد";
+                String body=safe(d.getString("text"));
+                if(body.isEmpty())body="يوجد بلاغ جديد يحتاج مراجعة.";
+                postAdminLocalNotification(title,body);
+            }
         });
     }
     void postAdminLocalNotification(String title,String body){
