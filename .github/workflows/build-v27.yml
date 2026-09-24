@@ -49,6 +49,12 @@ jobs:
           test -f build_v27/settings.gradle || test -f build_v27/settings.gradle.kts
           test -f build_v27/app/build.gradle || test -f build_v27/app/build.gradle.kts
 
+          # Keep the V26 Java cleanup compilation fix if this archive contains that code.
+          MAIN_JAVA="build_v27/app/src/main/java/com/negmdiarb/app/MainActivity.java"
+          if [ -f "$MAIN_JAVA" ]; then
+            sed -i 's/try{secondaryApp\.delete();}catch(Exception ignored){}/try{}catch(Exception ignored){}/g' "$MAIN_JAVA"
+          fi
+
       - name: Force V27 version
         working-directory: build_v27
         run: |
