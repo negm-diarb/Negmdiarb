@@ -1,0 +1,13 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() { return request.auth != null; }
+    function userDoc() { return get(/databases/(default)/documents/users/$(request.auth.uid)); }
+    function isAdmin() { return signedIn() && userDoc().data.role == 'admin' && userDoc().data.enabled == true; }
+    function isOwnerForBusiness(bid) { return signedIn() && userDoc().data.role == 'owner' && userDoc().data.enabled == true && userDoc().data.businessId == bid; }
+    match /businessImages/{businessId}/{fileName} {
+      allow read: if true;
+      allow write, delete: if isAdmin() || isOwnerForBusiness(businessId);
+    }
+  }
+}
