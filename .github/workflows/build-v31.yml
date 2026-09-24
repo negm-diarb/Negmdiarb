@@ -65,3 +65,9 @@ jobs:
           cp "$APK" out/NegmDiarb-V31-FullFix-Signed.apk
           cp firestore.rules out/firestore.rules
           cp storage.rules out/storage.rules
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NegmDiarb-V31-FullFix
+          path: out/
+          if-no-files-found: error
