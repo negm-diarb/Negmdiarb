@@ -4,14 +4,15 @@ p=Path("app/src/main/java/com/negmdiarb/app/MainActivity.java")
 s=p.read_text(encoding="utf-8")
 
 def rm(src,name,repl):
- m=re.search(r"(?m)^\\s*(?:public|private|protected)?\\s*(?:static\\s+)?(?:final\\s+)?[\\w<>\\[\\], ?]+\\s+"+re.escape(name)+r"\\s*\\([^)]*\\)\\s*\\{",src)
- if not m: raise SystemExit("method not found: "+name)
- a=m.start(); b=src.find("{",m.start()); d=0
+ sig="    void "+name+"("
+ a=src.find(sig)
+ if a<0: raise SystemExit("method not found: "+name)
+ b=src.find("{",a); d=0
  for i in range(b,len(src)):
   if src[i]=="{": d+=1
   elif src[i]=="}":
    d-=1
-   if d==0: return src[:a]+repl+"\n"+src[i+1:]
+   if d==0: return src[:a]+repl+"\\n"+src[i+1:]
  raise SystemExit("unbalanced: "+name)
 
 s=rm(s,"addBusinessCard",r'''    void addBusinessCard(DocumentSnapshot d){
