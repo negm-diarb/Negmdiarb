@@ -94,5 +94,15 @@ service cloud.firestore {
         && request.resource.data.type in ['rating','offer','complaint','changeRequest','business'];
       allow read, update, delete: if isAdmin();
     }
+
+    match /businessRequests/{id} {
+      allow create: if signedIn()
+        && request.resource.data.status == 'pending'
+        && request.resource.data.uid == request.auth.uid;
+      allow read: if isAdmin() || isReviewer();
+      allow update: if isAdmin() || isReviewer();
+      allow delete: if isAdmin();
+    }
+
   }
 }
