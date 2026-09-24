@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Inspect key methods
+      - name: List methods
         run: |
           set -e
           rm -rf inspect && mkdir inspect
@@ -21,12 +21,5 @@ jobs:
             cp -a "$ROOT"/. inspect/
           fi
           J=inspect/app/src/main/java/com/negmdiarb/app/MainActivity.java
-          echo "=== KEY METHOD SIGNATURES ==="
-          grep -nE '^[[:space:]]*(public |private |protected )?(static )?.*(void|boolean|String|LinearLayout|TextView|Button).* (addBusinessCard|showRatingDialog|createOwnerAccount|createAuthUser|installBackHandler|addOffer|approveRating|approveOffer|approveBusiness|sendComplaint|showHome|showBusinessDetails|saveBusiness|uploadImage|uploadImages)[[:space:]]*\\(' "$J" || true
-          for N in addBusinessCard showRatingDialog createOwnerAccount createAuthUser installBackHandler addOffer approveRating approveOffer approveBusiness sendComplaint showHome showBusinessDetails saveBusiness uploadImage uploadImages; do
-            LINE=$(grep -nE "^[[:space:]]*(public |private |protected )?(static )?.* (void|boolean|String|LinearLayout|TextView|Button).* $N[[:space:]]*\\(" "$J" | head -n 1 | cut -d: -f1 || true)
-            if [ -n "$LINE" ]; then
-              echo "=== $N line $LINE ==="
-              sed -n "$LINE,$((LINE+110))p" "$J"
-            fi
-          done
+          echo "=== METHOD NAMES ==="
+          grep -nE '^    (void|boolean|String|LinearLayout|TextView|Button|Task<|Map<|int|double) ' "$J" | sed 's/[[:space:]]*{.*//' | head -n 220
