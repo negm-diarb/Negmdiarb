@@ -56,8 +56,8 @@ s=rm(s,"loadRatings",r'''    void loadRatings(){
         }).addOnFailureListener(e->addText(adminRatingList,"تعذر تحميل التقييمات: "+safe(e.getMessage())));
     }''')
 
-if "boolean adminReturnToPanel" not in s:s=s.replace("int adminReturnSection=0;","int adminReturnSection=0; boolean adminReturnToPanel=false;")
-s=rm(s,"installBackHandler",r'''    void installBackHandler(){
+if "boolean adminReturnToPanel" not in s:s=s.replace("    void installBackHandler()","    boolean adminReturnToPanel=false;\n\n    void installBackHandler()",1)
+if "void returnToAdmin()" not in s:\n s=s.replace("    void installBackHandler()", "    void returnToAdmin(){show(adminPanel);refreshAdminBadges();}\n\n    void installBackHandler()", 1)\ns=rm(s,"installBackHandler",r'''    void installBackHandler(){
         getOnBackPressedDispatcher().addCallback(this,new OnBackPressedCallback(true){
             @Override public void handleOnBackPressed(){
                 if(addPanel.getVisibility()==View.VISIBLE){if(adminReturnToPanel)returnToAdmin();else showHome();return;}
