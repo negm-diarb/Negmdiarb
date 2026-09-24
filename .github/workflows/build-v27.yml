@@ -35,8 +35,6 @@ jobs:
           unzip -q "$ZIP" -d build_v27
           rm -rf build_v27/.github
 
-          # If the archive contains one extra top-level folder, move its project
-          # contents to build_v27 so Gradle files are at the project root.
           if [ ! -f build_v27/settings.gradle ] && [ ! -f build_v27/settings.gradle.kts ]; then
             ROOT="$(find build_v27 -mindepth 1 -maxdepth 1 -type d | head -n 1)"
             if [ -n "$ROOT" ] && { [ -f "$ROOT/settings.gradle" ] || [ -f "$ROOT/settings.gradle.kts" ]; }; then
@@ -49,7 +47,6 @@ jobs:
           test -f build_v27/settings.gradle || test -f build_v27/settings.gradle.kts
           test -f build_v27/app/build.gradle || test -f build_v27/app/build.gradle.kts
 
-          # Keep the V26 Java cleanup compilation fix if this archive contains that code.
           MAIN_JAVA="build_v27/app/src/main/java/com/negmdiarb/app/MainActivity.java"
           if [ -f "$MAIN_JAVA" ]; then
             sed -i 's/try{secondaryApp\.delete();}catch(Exception ignored){}/try{}catch(Exception ignored){}/g' "$MAIN_JAVA"
@@ -67,20 +64,30 @@ jobs:
 
           python3 - "$FILE" <<'PY'
           import re, sys
+
           p = sys.argv[1]
           s = open(p, encoding="utf-8").read()
 
-          if p.endswith(".kts"):
-              s, n = re.subn(r'versionCode\s*=\s*\d+', 'versionCode = 27', s, count=1)
-              s, m = re.subn(r'versionName\s*=\s*"[^"]*"', 'versionName = "v27-grand-update-1.0"', s, count=1)
-          else:
-              s, n = re.subn(r'versionCode\s+\d+', 'versionCode 27', s, count=1)
-              s, m = re.subn(r'versionName\s+"[^"]*"', 'versionName "v27-grand-update-1.0"', s, count=1)
+          # Support both Groovy and Kotlin Gradle syntax, with or without '='
+          # and with either single or double quotes around versionName.
+          s, n = re.subn(
+              r'versionCode\s*(?:=\s*)?\d+',
+              'versionCode = 27',
+              s,
+              count=1
+          )
+          s, m = re.subn(
+              r'versionName\s*(?:=\s*)?[\'"][^\'"]*[\'"]',
+              'versionName = "v27-grand-update-1.0"',
+              s,
+              count=1
+          )
 
           if n != 1:
               raise SystemExit("ERROR: Could not set versionCode to 27.")
           if m != 1:
               raise SystemExit("ERROR: Could not set versionName.")
+
           open(p, "w", encoding="utf-8").write(s)
           PY
 
@@ -132,7 +139,7 @@ jobs:
         run: |
           set -e
           mkdir -p out
-          cp "build_v27/app/build/outputs/apk/release/app-release.apk"              "out/NegmDiarb-V27-Signed-APK.apk"
+          cp "build_v27/app/build/outputs/apk/release/app-release.apk" "out/NegmDiarb-V27-Signed-APK.apk"
 
       - name: Verify APK signature
         run: |
