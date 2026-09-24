@@ -260,7 +260,7 @@ s=s.replace('edit.setOnClickListener(v->{editingBusinessId=d.getId();fillBusines
             'edit.setOnClickListener(v->{adminReturnSection=R.id.businessSection;editingBusinessId=d.getId();fillBusiness(d);show(addPanel);});')
 
 # Notify administration when customer/owner creates reviewable items.
-s=s.replace('db.collection("ratings").document(rid).set(m).addOnSuccessListener(x->{toast("تم إرسال التقييم للمراجعة");});',
+s=s.replace('db.collection("ratings").document(rid).set(m).addOnSuccessListener(x->{createAdminNotification("rating",bid,"تقييم جديد","يوجد تقييم جديد يحتاج مراجعة.");toast("تم إرسال التقييم للمراجعة");});',
             'db.collection("ratings").document(rid).set(m).addOnSuccessListener(x->{createAdminNotification("rating",bid,"تقييم جديد","يوجد تقييم جديد يحتاج مراجعة.");toast("تم إرسال التقييم للمراجعة");});')
 s=s.replace('db.collection("complaints").add(m).addOnSuccessListener(x->{serviceStatus.setText("✅ تم إرسال الرسالة لخدمة العملاء.");',
             'db.collection("complaints").add(m).addOnSuccessListener(x->{createAdminNotification("complaint","", "شكوى/اقتراح جديد","وصلت رسالة جديدة لخدمة العملاء وتحتاج متابعة.");serviceStatus.setText("✅ تم إرسال الرسالة لخدمة العملاء.");')
