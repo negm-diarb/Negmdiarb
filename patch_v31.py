@@ -108,7 +108,7 @@ method_replace(s,"showRatingDialog",'''    void showRatingDialog(String bid){
     }''')
 
 # Central notification writer + listener. Local notification is only possible while the admin app is running.
-String helpers = '''    com.google.firebase.firestore.ListenerRegistration adminNotificationListener;
+helpers = '''    com.google.firebase.firestore.ListenerRegistration adminNotificationListener;
     boolean adminNotificationBaselineReady=false;
     void createAdminNotification(String type,String itemId,String businessId,String title,String body){
         if(db==null)return;
@@ -145,7 +145,14 @@ String helpers = '''    com.google.firebase.firestore.ListenerRegistration admin
     }
 '''
 if "void createAdminNotification(String type,String itemId" not in s:
-    s=s.replace("    void installBackHandler()",helpers+"    void initAdminNotifications(){}",1)
+    s=s.replace("    void installBackHandler()",helpers+"    void initAdminNotifications(){
+        if(android.os.Build.VERSION.SDK_INT>=26){
+            android.app.NotificationManager nm=(android.app.NotificationManager)getSystemService(NOTIFICATION_SERVICE);
+            if(nm!=null)nm.createNotificationChannel(new android.app.NotificationChannel("admin_review","مراجعات الإدارة",android.app.NotificationManager.IMPORTANCE_HIGH));
+        }
+        if(android.os.Build.VERSION.SDK_INT>=33 && checkSelfPermission("android.permission.POST_NOTIFICATIONS")!=PackageManager.PERMISSION_GRANTED)
+            requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"},9001);
+    }",1)
 
 # Hook owner change requests.
 s=s.replace('db.collection("changeRequests").add(req).addOnSuccessListener(x->addStatus.setText("✅ تم إرسال التعديل للإدارة.', 'db.collection("changeRequests").add(req).addOnSuccessListener(x->{createAdminNotification("changeRequest",x.getId(),bid,"طلب تعديل منشأة","يوجد طلب تعديل يحتاج مراجعة.");addStatus.setText("✅ تم إرسال التعديل للإدارة.')
