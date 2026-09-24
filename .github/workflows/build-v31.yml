@@ -1,0 +1,67 @@
+name: Build Negm Diarb V31 Full Fix
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "patch_v31.py"
+      - ".github/workflows/build-v31.yml"
+      - "NegmDiarb_V27_GrandSecurityUpdate.zip"
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: "17"}
+      - name: Extract and patch
+        run: |
+          set -e
+          ZIP="$(find . -maxdepth 1 -type f -iname 'NegmDiarb_V27_*.zip' | head -n 1)"
+          rm -rf build_v31 && mkdir build_v31
+          unzip -q "$ZIP" -d build_v31
+          if [ ! -f build_v31/settings.gradle ] && [ ! -f build_v31/settings.gradle.kts ]; then
+            ROOT="$(find build_v31 -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+            shopt -s dotglob; cp -a "$ROOT"/. build_v31/; rm -rf "$ROOT"
+          fi
+          cd build_v31
+          python3 "$GITHUB_WORKSPACE/patch_v28.py"
+          python3 "$GITHUB_WORKSPACE/patch_v31.py"
+          grep -q 'returnToAdminAfterForm' app/src/main/java/com/negmdiarb/app/MainActivity.java
+          grep -q 'createAdminNotification("rating"' app/src/main/java/com/negmdiarb/app/MainActivity.java
+      - name: Version
+        working-directory: build_v31
+        run: |
+          FILE="app/build.gradle"; [ -f "$FILE" ] || FILE="app/build.gradle.kts"
+          python3 - "$FILE" <<'PY'
+          import re,sys
+          p=sys.argv[1];s=open(p,encoding="utf-8").read()
+          s,n=re.subn(r'versionCode\s*(?:=\s*)?\d+','versionCode = 31',s,count=1)
+          s,m=re.subn(r'versionName\s*(?:=\s*)?["\'][^"\']*["\']','versionName = "v31-full-fix-1.0"',s,count=1)
+          assert n==1 and m==1
+          open(p,"w",encoding="utf-8").write(s)
+          PY
+      - name: Sign and build
+        env:
+          K: ${{ secrets.NEGMDIARB_KEYSTORE_B64 }}
+          NEGMDIARB_KEYSTORE_FILE: ${{ github.workspace }}/negmdiarb-release.jks
+          NEGMDIARB_KEYSTORE_PASSWORD: ${{ secrets.NEGMDIARB_KEYSTORE_PASSWORD }}
+          NEGMDIARB_KEY_ALIAS: ${{ secrets.NEGMDIARB_KEY_ALIAS }}
+          NEGMDIARB_KEY_PASSWORD: ${{ secrets.NEGMDIARB_KEY_PASSWORD }}
+        run: |
+          echo "$K" | base64 --decode > "$GITHUB_WORKSPACE/negmdiarb-release.jks"
+          cd build_v31
+          gradle wrapper --gradle-version 8.7
+          chmod +x gradlew
+          ./gradlew clean assembleRelease --no-daemon --stacktrace
+      - name: Verify and upload
+        run: |
+          set -e
+          APK="build_v31/app/build/outputs/apk/release/app-release.apk"
+          test -f "$APK"
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -n 1)"
+          "$APKSIGNER" verify --verbose "$APK"
+          "$APKSIGNER" verify --print-certs "$APK"
+          mkdir -p out
+          cp "$APK" out/NegmDiarb-V31-FullFix-Signed.apk
+          cp firestore.rules out/firestore.rules
+          cp storage.rules out/storage.rules
