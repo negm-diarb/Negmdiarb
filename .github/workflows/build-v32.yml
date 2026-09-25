@@ -131,6 +131,31 @@ jobs:
           "$APKSIGNER" verify --print-certs "$APK" | tee /tmp/certs.txt
           grep -q 'a4e0ab397c04a777877cd88fb429a7ee1f537de33c073032fb2b7f159e6cc830' /tmp/certs.txt
 
+
+      - name: Export exact V32 source
+        working-directory: build_v32
+        run: |
+          set -e
+          mkdir -p "$GITHUB_WORKSPACE/source_v32"
+          cp -a app/src/main/java "$GITHUB_WORKSPACE/source_v32/"
+          cp -a app/src/main/AndroidManifest.xml "$GITHUB_WORKSPACE/source_v32/"
+          cp -a app/build.gradle* "$GITHUB_WORKSPACE/source_v32/" 2>/dev/null || true
+          cp -a build.gradle* "$GITHUB_WORKSPACE/source_v32/" 2>/dev/null || true
+          cp -a settings.gradle* "$GITHUB_WORKSPACE/source_v32/" 2>/dev/null || true
+          cp -a gradle.properties "$GITHUB_WORKSPACE/source_v32/" 2>/dev/null || true
+          cp -a "$GITHUB_WORKSPACE/firestore.rules" "$GITHUB_WORKSPACE/source_v32/" 2>/dev/null || true
+          cp -a "$GITHUB_WORKSPACE/patch_v32.py" "$GITHUB_WORKSPACE/source_v32/" 2>/dev/null || true
+          printf '%s\n' 'Exact V32 generated source from the signed build pipeline.' > "$GITHUB_WORKSPACE/source_v32/README.txt"
+          cd "$GITHUB_WORKSPACE"
+          zip -qr NegmDiarb-V32-Source-Code.zip source_v32
+
+      - name: Upload V32 source code
+        uses: actions/upload-artifact@v4
+        with:
+          name: NegmDiarb-V32-Source-Code
+          path: NegmDiarb-V32-Source-Code.zip
+          if-no-files-found: error
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
