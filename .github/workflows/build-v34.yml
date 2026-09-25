@@ -1,0 +1,148 @@
+name: Build Negm Diarb V34 Stability Fix
+
+on:
+  push:
+    paths:
+      - "patch_v34.py"
+      - ".github/workflows/build-v34.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Extract source
+        run: |
+          set -e
+          ZIP="$(find . -maxdepth 1 -type f -iname 'NegmDiarb_V27_*.zip' | head -n 1)"
+          test -n "$ZIP"
+          rm -rf build_v34 && mkdir build_v34
+          unzip -q "$ZIP" -d build_v34
+          if [ ! -f build_v34/settings.gradle ] && [ ! -f build_v34/settings.gradle.kts ]; then
+            ROOT="$(find build_v34 -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+            shopt -s dotglob
+            cp -a "$ROOT"/. build_v34/
+            rm -rf "$ROOT"
+          fi
+          test -f build_v34/settings.gradle || test -f build_v34/settings.gradle.kts
+
+      - name: Apply V28
+        working-directory: build_v34
+        run: python3 "$GITHUB_WORKSPACE/patch_v28.py"
+      - name: Apply V29
+        working-directory: build_v34
+        run: python3 "$GITHUB_WORKSPACE/patch_v29.py"
+      - name: Apply V30
+        working-directory: build_v34
+        run: python3 "$GITHUB_WORKSPACE/patch_v30.py"
+      - name: Apply V32
+        working-directory: build_v34
+        run: python3 "$GITHUB_WORKSPACE/patch_v32.py"
+      - name: Apply V33
+        working-directory: build_v34
+        run: python3 "$GITHUB_WORKSPACE/patch_v33.py"
+      - name: Apply V34
+        working-directory: build_v34
+        run: python3 "$GITHUB_WORKSPACE/patch_v34.py"
+
+      - name: Verify V34 source
+        working-directory: build_v34
+        run: |
+          set -e
+          grep -q 'businessLoadGeneration' app/src/main/java/com/negmdiarb/app/MainActivity.java
+          grep -q 'adminNotificationBaselineReady' app/src/main/java/com/negmdiarb/app/MainActivity.java
+          grep -q 'startAdminNotificationListener' app/src/main/java/com/negmdiarb/app/MainActivity.java
+          grep -q 'createAuthUser(email,pass,m->{' app/src/main/java/com/negmdiarb/app/MainActivity.java
+          grep -q 'onSuccess!=null' app/src/main/java/com/negmdiarb/app/MainActivity.java
+          grep -q 'whereEqualTo("active",true).limit(150)' app/src/main/java/com/negmdiarb/app/MainActivity.java
+
+      - name: Set version
+        working-directory: build_v34
+        run: |
+          set -e
+          FILE="app/build.gradle"
+          [ -f "$FILE" ] || FILE="app/build.gradle.kts"
+          python3 - "$FILE" <<'PY'
+          import re,sys
+          p=sys.argv[1]
+          s=open(p,encoding="utf-8").read()
+          s,n=re.subn(r'versionCode\s*(?:=\s*)?\d+','versionCode = 34',s,count=1)
+          s,m=re.subn(r'versionName\s*(?:=\s*)?["\'][^"\']*["\']','versionName = "v34-stability-fix-1.0"',s,count=1)
+          if n!=1 or m!=1: raise SystemExit("version update failed")
+          open(p,"w",encoding="utf-8").write(s)
+          PY
+
+      - name: Signing key
+        env:
+          K: ${{ secrets.NEGMDIARB_KEYSTORE_B64 }}
+        run: |
+          set -e
+          test -n "$K"
+          echo "$K" | base64 --decode > "$GITHUB_WORKSPACE/negmdiarb-release.jks"
+
+      - name: Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Wrapper
+        working-directory: build_v34
+        run: |
+          gradle wrapper --gradle-version 8.7
+          chmod +x gradlew
+
+      - name: Build signed V34
+        working-directory: build_v34
+        env:
+          NEGMDIARB_KEYSTORE_FILE: ${{ github.workspace }}/negmdiarb-release.jks
+          NEGMDIARB_KEYSTORE_PASSWORD: ${{ secrets.NEGMDIARB_KEYSTORE_PASSWORD }}
+          NEGMDIARB_KEY_ALIAS: ${{ secrets.NEGMDIARB_KEY_ALIAS }}
+          NEGMDIARB_KEY_PASSWORD: ${{ secrets.NEGMDIARB_KEY_PASSWORD }}
+        run: ./gradlew clean assembleRelease --no-daemon --stacktrace
+
+      - name: Verify version and signature
+        run: |
+          set -e
+          APK="build_v34/app/build/outputs/apk/release/app-release.apk"
+          test -f "$APK"
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -n 1)"
+          "$APKSIGNER" verify --verbose "$APK"
+          "$APKSIGNER" verify --print-certs "$APK" | tee /tmp/certs.txt
+          grep -q 'a4e0ab397c04a777877cd88fb429a7ee1f537de33c073032fb2b7f159e6cc830' /tmp/certs.txt
+
+      - name: Export source
+        working-directory: build_v34
+        run: |
+          set -e
+          mkdir -p "$GITHUB_WORKSPACE/source_v34"
+          cp -a app/src/main/java "$GITHUB_WORKSPACE/source_v34/"
+          cp -a app/src/main/AndroidManifest.xml "$GITHUB_WORKSPACE/source_v34/"
+          cp -a app/build.gradle* "$GITHUB_WORKSPACE/source_v34/" 2>/dev/null || true
+          cp -a build.gradle* "$GITHUB_WORKSPACE/source_v34/" 2>/dev/null || true
+          cp -a settings.gradle* "$GITHUB_WORKSPACE/source_v34/" 2>/dev/null || true
+          cp -a gradle.properties "$GITHUB_WORKSPACE/source_v34/" 2>/dev/null || true
+          cp -a "$GITHUB_WORKSPACE/firestore.rules" "$GITHUB_WORKSPACE/source_v34/" 2>/dev/null || true
+          printf '%s\n' 'V34 source generated from the same signed build pipeline.' > "$GITHUB_WORKSPACE/source_v34/README.txt"
+          cd "$GITHUB_WORKSPACE"
+          zip -qr NegmDiarb-V34-Source-Code.zip source_v34
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: NegmDiarb-V34-Stability-Fix
+          path: build_v34/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+
+      - name: Upload source
+        uses: actions/upload-artifact@v4
+        with:
+          name: NegmDiarb-V34-Source-Code
+          path: NegmDiarb-V34-Source-Code.zip
+          if-no-files-found: error
