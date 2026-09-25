@@ -162,3 +162,5 @@ jobs:
           name: NegmDiarb-V33-Performance-Images-Owners
           path: build_v32/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
+
+# trigger after V33 patch syntax fix
