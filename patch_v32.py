@@ -42,10 +42,12 @@ if "if(addPanel.getVisibility()==View.VISIBLE)" in s:
     )
 
 # 2) Admin Add Offer enters the same return path.
-need(
-'findViewById(R.id.btnAdminAddOffer).setOnClickListener(v->openAdminOfferForm());',
-'findViewById(R.id.btnAdminAddOffer).setOnClickListener(v->{adminReturnToPanel=true;openAdminOfferForm();});',
-'admin add offer listener'
+if 'findViewById(R.id.btnAdminAddOffer).setOnClickListener' not in s:
+    raise SystemExit("MISSING: admin add offer listener")
+s=re.sub(
+    r'findViewById\\(R\\.id\\.btnAdminAddOffer\\)\\.setOnClickListener\\([^;]+;\\);',
+    'findViewById(R.id.btnAdminAddOffer).setOnClickListener(v->{adminReturnToPanel=true;openAdminOfferForm();});',
+    s,count=1
 )
 s=s.replace(
 'findViewById(R.id.btnBackOffers).setOnClickListener(v->showHome());',
