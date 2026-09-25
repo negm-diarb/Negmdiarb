@@ -215,8 +215,8 @@ s=s.replace('Object imgsObj=d.get("imageUrls");\n        if(imgsObj instanceof L
             'Object imgsObj=d.get("imageUrls"); if(!(imgsObj instanceof List)||((List<?>)imgsObj).isEmpty())imgsObj=d.get("imageDataUrls");\n        if(imgsObj instanceof List){',1)
 
 # Async compression: max 4 images, downsampled and JPEG-compressed.
-if("Task<List<String>> encodeImagesForFirestoreAsync()" not in s){
-marker='    void runOcr(Uri u)';
+if "Task<List<String>> encodeImagesForFirestoreAsync()" not in s:
+marker='    void runOcr(Uri u)'
 helpers='''    Task<List<String>> encodeImagesForFirestoreAsync(){
         ArrayList<Uri> copy=new ArrayList<>(imageUris);
         if(copy.isEmpty())return Tasks.forResult(new ArrayList<>());
@@ -244,7 +244,7 @@ s=s.replace(marker,helpers+marker,1);
 }
 
 # Replace final write/print so these fixes are part of the same patch execution.
-tail='p.write_text(s,encoding="utf-8")\nprint("TARGETED V32 PATCH OK")';
+tail='p.write_text(s,encoding="utf-8")\nprint("TARGETED V32 PATCH OK")'
 if tail not in s: raise SystemExit("patch_v32 tail not found")
 s=s.replace(tail,'p.write_text(s,encoding="utf-8")\nprint("V33 PERFORMANCE/IMAGES/OWNERS PATCH OK")',1)
 
