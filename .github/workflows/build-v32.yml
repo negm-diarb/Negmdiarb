@@ -7,6 +7,7 @@ on:
       - "patch_v28.py"
       - "patch_v29.py"
       - "patch_v30.py"
+      - "patch_v32.py"
       - "firestore.rules"
       - "storage.rules"
       - "assets/negm_icon_user.jpg"
@@ -52,6 +53,20 @@ jobs:
       - name: Apply V30 exactly
         working-directory: build_v32
         run: python3 "$GITHUB_WORKSPACE/patch_v30.py"
+
+      - name: Apply targeted V32 fixes
+        working-directory: build_v32
+        run: python3 "$GITHUB_WORKSPACE/patch_v32.py"
+
+      - name: Verify targeted fixes
+        working-directory: build_v32
+        run: |
+          set -e
+          grep -q "adminReturnToPanel" app/src/main/java/com/negmdiarb/app/MainActivity.java
+          grep -q "createAdminNotification("rating"" app/src/main/java/com/negmdiarb/app/MainActivity.java
+          grep -q "createAdminNotification("complaint"" app/src/main/java/com/negmdiarb/app/MainActivity.java
+          grep -q "ضيف محلك ووسع تجارتك وخلي الناس توصلك" app/src/main/java/com/negmdiarb/app/MainActivity.java
+          if grep -q "currentAdminDeviceId" app/src/main/java/com/negmdiarb/app/MainActivity.java; then exit 1; fi
 
       - name: Safety check - no V31 security patch
         working-directory: build_v32
