@@ -143,8 +143,7 @@ if "void installPublicContributionButtons()" not in s:
     s=s.replace(marker,methods+marker,1)
 
 if "installPublicContributionButtons();" not in s:
-    need("void setup(){","void setup(){
-        installPublicContributionButtons();","setup marker")
+    need("void setup(){","void setup(){\\n        installPublicContributionButtons();","setup marker")
 
 p.write_text(s,encoding="utf-8")
 print("TARGETED V32 PATCH OK")
