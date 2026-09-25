@@ -16,24 +16,30 @@ def need(old,new,label):
 if "boolean adminReturnToPanel" not in s:
     s=s.replace("boolean adminMode=false;", "boolean adminMode=false; boolean adminReturnToPanel=false;", 1)
 
-need(
-'findViewById(R.id.btnAdminAddBusiness).setOnClickListener(v->{if(isMainAdmin()){clearForm();show(addPanel);}else toast("هذه الصلاحية للمدير الرئيسي فقط.");});',
-'findViewById(R.id.btnAdminAddBusiness).setOnClickListener(v->{if(isMainAdmin()){adminReturnToPanel=true;clearForm();show(addPanel);}else toast("هذه الصلاحية للمدير الرئيسي فقط.");});',
-'admin add business listener'
+# Normalize whichever V30/V29 listener form exists.
+if 'findViewById(R.id.btnAdminAddBusiness).setOnClickListener' not in s:
+    raise SystemExit("MISSING: admin add business listener")
+s=re.sub(
+    r'findViewById\(R\.id\.btnAdminAddBusiness\)\.setOnClickListener\(v->\{if\(isMainAdmin\(\)\)\{clearForm\(\);show\(addPanel\);\}else toast\("[^"]*"\);\}\);',
+    'findViewById(R.id.btnAdminAddBusiness).setOnClickListener(v->{if(isMainAdmin()){adminReturnToPanel=true;clearForm();show(addPanel);}else toast("هذه الصلاحية للمدير الرئيسي فقط.");});',
+    s,count=1
 )
 
-need(
-'findViewById(R.id.btnBackAdd).setOnClickListener(v->{if(adminReturnToPanel)returnToAdmin();else showHome();});',
-'findViewById(R.id.btnBackAdd).setOnClickListener(v->{if(adminReturnToPanel){adminReturnToPanel=false;returnToAdmin();}else showHome();});',
-'back add listener'
+if 'findViewById(R.id.btnBackAdd).setOnClickListener' not in s:
+    raise SystemExit("MISSING: back add listener")
+s=re.sub(
+    r'findViewById\(R\.id\.btnBackAdd\)\.setOnClickListener\([^;]+;\);',
+    'findViewById(R.id.btnBackAdd).setOnClickListener(v->{if(adminReturnToPanel || adminMode){adminReturnToPanel=false;returnToAdmin();}else showHome();});',
+    s,count=1
 )
 
-# V30 may already have the correct listener; normalize the common showHome form if present.
-s=s.replace(
-'findViewById(R.id.btnBackAdd).setOnClickListener(v->showHome());',
-'findViewById(R.id.btnBackAdd).setOnClickListener(v->{if(adminReturnToPanel){adminReturnToPanel=false;returnToAdmin();}else showHome();});',
-1
-)
+# Hardware back must use the explicit flag.
+if "if(addPanel.getVisibility()==View.VISIBLE)" in s:
+    s=re.sub(
+        r'if\(addPanel\.getVisibility\(\)==View\.VISIBLE\)\{[^}]*\}',
+        'if(addPanel.getVisibility()==View.VISIBLE){if(adminReturnToPanel || adminMode){adminReturnToPanel=false;returnToAdmin();}else showHome();return;}',
+        s,count=1
+    )
 
 # 2) Admin Add Offer enters the same return path.
 need(
