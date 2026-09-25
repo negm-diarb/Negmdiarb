@@ -148,5 +148,21 @@ if "void installPublicContributionButtons()" not in s:
 if "installPublicContributionButtons();" not in s:
     need("void setup(){","void setup(){\n        installPublicContributionButtons();","setup marker")
 
+# V30's helper was removed by its method rewrite; restore only the Firestore notification writer.
+if "void createAdminNotification(String type,String businessId,String title,String body)" not in s:
+    pos=s.rfind("\n}")
+    if pos<0: raise SystemExit("MISSING: class closing brace")
+    helper_java=r'''    void createAdminNotification(String type,String businessId,String title,String body){
+        if(db==null)return;
+        Map<String,Object> n=new HashMap<>();
+        n.put("type",type); n.put("businessId",businessId==null?"":businessId);
+        n.put("title",title==null?"":title); n.put("body",body==null?"":body);
+        n.put("status","pending"); n.put("createdAt",FieldValue.serverTimestamp());
+        n.put("uid",auth!=null&&auth.getCurrentUser()!=null?auth.getCurrentUser().getUid():"");
+        db.collection("adminNotifications").add(n);
+    }
+'''
+    s=s[:pos]+"\n"+helper_java+s[pos:]
+
 p.write_text(s,encoding="utf-8")
 print("TARGETED V32 PATCH OK")
