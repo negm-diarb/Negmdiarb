@@ -69,18 +69,13 @@ if "if(addPanel.getVisibility()==View.VISIBLE)" in s:
     )
 
 # 4) Rating submission creates an admin review notification.
-needle='db.collection("ratings").document(rid).set(m).addOnSuccessListener'
-if needle not in s: raise SystemExit("MISSING: rating save")
+needle='db.collection("ratings").document(rid).set(m).addOnSuccessListener(q->{'
+if needle not in s:
+    raise SystemExit("MISSING: rating success listener")
 if 'createAdminNotification("rating",rid' not in s:
     s=s.replace(
         needle,
-        'db.collection("ratings").document(rid).set(m).addOnSuccessListener(x->{createAdminNotification("rating",bid,"تقييم جديد","يوجد تقييم جديد يحتاج مراجعة.");',
-        1
-    )
-    # Close the newly opened listener around the existing success body.
-    s=s.replace(
-        'toast("تم إرسال التقييم للمراجعة");dialog.dismiss();}).addOnFailureListener',
-        'toast("تم إرسال التقييم للمراجعة");dialog.dismiss();}).addOnFailureListener',
+        'db.collection("ratings").document(rid).set(m).addOnSuccessListener(q->{createAdminNotification("rating",rid,"تقييم جديد","يوجد تقييم جديد يحتاج مراجعة.");',
         1
     )
 
@@ -151,7 +146,7 @@ if "void installPublicContributionButtons()" not in s:
     s=s.replace(marker,methods+marker,1)
 
 if "installPublicContributionButtons();" not in s:
-    need("void setup(){","void setup(){\\n        installPublicContributionButtons();","setup marker")
+    need("void setup(){","void setup(){\n        installPublicContributionButtons();","setup marker")
 
 p.write_text(s,encoding="utf-8")
 print("TARGETED V32 PATCH OK")
