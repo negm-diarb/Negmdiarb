@@ -225,6 +225,7 @@ helpers='''    Task<List<String>> encodeImagesForFirestoreAsync(){
             for(int i=0;i<max;i++){String data=encodeImageDataUrl(copy.get(i));if(data!=null&&!data.isEmpty())out.add(data);}
             return out;
         });
+    }
     String encodeImageDataUrl(Uri uri)throws Exception{
         if(uri==null)return "";
         android.content.ContentResolver cr=getContentResolver();
@@ -239,8 +240,5 @@ helpers='''    Task<List<String>> encodeImagesForFirestoreAsync(){
 ''';
 s=s.replace(marker,helpers+marker,1);
 
-# Replace final write/print so these fixes are part of the same patch execution.
-tail='p.write_text(s,encoding="utf-8")\nprint("TARGETED V32 PATCH OK")'
-if tail not in s: raise SystemExit("patch_v32 tail not found")
-s=s.replace(tail,'p.write_text(s,encoding="utf-8")\nprint("V33 PERFORMANCE/IMAGES/OWNERS PATCH OK")',1)
-
+p.write_text(s,encoding="utf-8")
+print("V33 PERFORMANCE/IMAGES/OWNERS PATCH OK")
