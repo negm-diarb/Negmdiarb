@@ -226,7 +226,6 @@ helpers='''    Task<List<String>> encodeImagesForFirestoreAsync(){
             for(int i=0;i<max;i++){String data=encodeImageDataUrl(copy.get(i));if(data!=null&&!data.isEmpty())out.add(data);}
             return out;
         });
-    }
     String encodeImageDataUrl(Uri uri)throws Exception{
         if(uri==null)return "";
         android.content.ContentResolver cr=getContentResolver();
@@ -237,11 +236,9 @@ helpers='''    Task<List<String>> encodeImagesForFirestoreAsync(){
         InputStream b=cr.openInputStream(uri);if(b==null)return "";Bitmap bmp=BitmapFactory.decodeStream(b,null,opts);b.close();if(bmp==null)return "";
         ByteArrayOutputStream out=new ByteArrayOutputStream();bmp.compress(Bitmap.CompressFormat.JPEG,58,out);bmp.recycle();
         return "data:image/jpeg;base64,"+Base64.getEncoder().encodeToString(out.toByteArray());
-    }
     
 ''';
 s=s.replace(marker,helpers+marker,1);
-}
 
 # Replace final write/print so these fixes are part of the same patch execution.
 tail='p.write_text(s,encoding="utf-8")\nprint("TARGETED V32 PATCH OK")'
