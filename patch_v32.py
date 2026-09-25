@@ -215,7 +215,6 @@ s=s.replace('Object imgsObj=d.get("imageUrls");\n        if(imgsObj instanceof L
             'Object imgsObj=d.get("imageUrls"); if(!(imgsObj instanceof List)||((List<?>)imgsObj).isEmpty())imgsObj=d.get("imageDataUrls");\n        if(imgsObj instanceof List){',1)
 
 # Async compression: max 4 images, downsampled and JPEG-compressed.
-if "Task<List<String>> encodeImagesForFirestoreAsync()" not in s:
 marker='    void runOcr(Uri u)'
 helpers='''    Task<List<String>> encodeImagesForFirestoreAsync(){
         ArrayList<Uri> copy=new ArrayList<>(imageUris);
