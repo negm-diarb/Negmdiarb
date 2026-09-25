@@ -1,4 +1,4 @@
-name: Build Negm Diarb V32 From Stable V30
+name: Build Negm Diarb V33 Performance Images Owners
 
 on:
   workflow_dispatch:
@@ -89,8 +89,8 @@ jobs:
           import re,sys
           p=sys.argv[1]
           s=open(p,encoding="utf-8").read()
-          s,n=re.subn(r'versionCode\s*(?:=\s*)?\d+','versionCode = 32',s,count=1)
-          s,m=re.subn(r'versionName\s*(?:=\s*)?["\'][^"\']*["\']','versionName = "v32-stable-v30-base-1.0"',s,count=1)
+          s,n=re.subn(r'versionCode\s*(?:=\s*)?\d+','versionCode = 33',s,count=1)
+          s,m=re.subn(r'versionName\s*(?:=\s*)?["\'][^"\']*["\']','versionName = "v33-performance-images-owners-1.0"',s,count=1)
           if n!=1 or m!=1: raise SystemExit("version update failed")
           open(p,"w",encoding="utf-8").write(s)
           PY
@@ -132,7 +132,7 @@ jobs:
           grep -q 'a4e0ab397c04a777877cd88fb429a7ee1f537de33c073032fb2b7f159e6cc830' /tmp/certs.txt
 
 
-      - name: Export exact V32 source
+      - name: Export exact V33 source
         working-directory: build_v32
         run: |
           set -e
@@ -147,18 +147,18 @@ jobs:
           cp -a "$GITHUB_WORKSPACE/patch_v32.py" "$GITHUB_WORKSPACE/source_v32/" 2>/dev/null || true
           printf '%s\n' 'Exact V32 generated source from the signed build pipeline.' > "$GITHUB_WORKSPACE/source_v32/README.txt"
           cd "$GITHUB_WORKSPACE"
-          zip -qr NegmDiarb-V32-Source-Code.zip source_v32
+          zip -qr NegmDiarb-V33-Source-Code.zip source_v32
 
-      - name: Upload V32 source code
+      - name: Upload V33 source code
         uses: actions/upload-artifact@v4
         with:
-          name: NegmDiarb-V32-Source-Code
-          path: NegmDiarb-V32-Source-Code.zip
+          name: NegmDiarb-V33-Source-Code
+          path: NegmDiarb-V33-Source-Code.zip
           if-no-files-found: error
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: NegmDiarb-V32-Stable-V30-Base
+          name: NegmDiarb-V33-Performance-Images-Owners
           path: build_v32/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
