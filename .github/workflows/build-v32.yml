@@ -63,8 +63,8 @@ jobs:
         run: |
           set -e
           grep -q "adminReturnToPanel" app/src/main/java/com/negmdiarb/app/MainActivity.java
-          grep -q "createAdminNotification("rating"" app/src/main/java/com/negmdiarb/app/MainActivity.java
-          grep -q "createAdminNotification("complaint"" app/src/main/java/com/negmdiarb/app/MainActivity.java
+          grep -q 'createAdminNotification("rating"' app/src/main/java/com/negmdiarb/app/MainActivity.java
+          grep -q 'createAdminNotification("complaint"' app/src/main/java/com/negmdiarb/app/MainActivity.java
           grep -q "ضيف محلك ووسع تجارتك وخلي الناس توصلك" app/src/main/java/com/negmdiarb/app/MainActivity.java
           if grep -q "currentAdminDeviceId" app/src/main/java/com/negmdiarb/app/MainActivity.java; then exit 1; fi
 
