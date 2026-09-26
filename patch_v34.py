@@ -63,12 +63,12 @@ need(old,new,'notification listener body')
 
 # Start listener whenever an admin session is established.
 s=s.replace('applyRolePermissions();loadRoleData();',
-            'applyRolePermissions();loadRoleData();if(isMainAdmin()){initAdminNotifications();startAdminNotificationListener();refreshAdminBadges();}',
+            'applyRolePermissions();loadRoleData();if(isMainAdmin()){startAdminNotificationListener();refreshAdminBadges();}',
             2)
 
 # Also start it for an already authenticated admin restored at app launch.
 s=s.replace('adminMode=true;staffRole=role;applyRolePermissions();',
-            'adminMode=true;staffRole=role;applyRolePermissions();if(isMainAdmin()){initAdminNotifications();startAdminNotificationListener();refreshAdminBadges();}',
+            'adminMode=true;staffRole=role;applyRolePermissions();if(isMainAdmin()){startAdminNotificationListener();refreshAdminBadges();}',
             1)
 
 # ---- 3) Owner-account creation: make the failure point visible and ensure the selected business is active. ----
